@@ -43,3 +43,6 @@ next-env.d.ts
 # local sqlite databases
 *.db
 *.db.bak
+
+# scratch directories
+/scratch/
