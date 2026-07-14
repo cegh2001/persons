@@ -1,4 +1,5 @@
 import React from "react";
+import { Skeleton } from "boneyard-js/react";
 import { 
   Map, 
   Heart, 
@@ -59,14 +60,79 @@ export function CensoTable({
     <>
       {/* Table Container */}
       <div className="relative min-h-[300px]">
-        {loading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/60 backdrop-blur-[1px] z-10 space-y-2">
-            <div className="size-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs text-muted-foreground">Cargando censo...</span>
-          </div>
-        ) : null}
-
-        {persons.length === 0 ? (
+        <Skeleton
+          name="censo-table"
+          loading={loading}
+          animate="shimmer"
+          stagger={50}
+          transition={300}
+          fixture={
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Cédula / Documento</TableHead>
+                  <TableHead>Sector / Ubicación</TableHead>
+                  <TableHead>Vulnerabilidad</TableHead>
+                  <TableHead>Asistencia</TableHead>
+                  <TableHead className="hidden md:table-cell max-w-md">Notas y Entregas</TableHead>
+                  <TableHead className="w-24 text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-semibold text-slate-900 dark:text-slate-100">
+                      Nombre Apellido
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-xs bg-slate-50 dark:bg-slate-900">
+                        V-12345678
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs border border-indigo-200 text-indigo-700">
+                        Calle Paez
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700">
+                        <Heart className="size-3 fill-red-500 text-red-500" /> Vulnerable
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-indigo-50 border-indigo-200 text-indigo-700">
+                          <Package className="size-3" /> Suministros
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-slate-100 border-slate-200 text-slate-400">
+                          <Stethoscope className="size-3" /> Médica
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell max-w-md text-xs text-muted-foreground">
+                      <div className="flex items-start gap-1.5">
+                        <FileText className="size-3.5 shrink-0 mt-0.5 text-slate-400" />
+                        <span className="line-clamp-2">Notas de ejemplo para el registro</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button variant="ghost" size="icon-xs" className="text-slate-500">
+                          <Edit2 className="size-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon-xs" className="text-destructive/80">
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          }
+        >
+          {persons.length === 0 ? (
           <div className="p-12 text-center flex flex-col items-center justify-center space-y-3">
             <div className="p-3 bg-slate-100 dark:bg-slate-900 rounded-full text-slate-400">
               <Map className="size-6" />
@@ -237,6 +303,7 @@ export function CensoTable({
             </TableBody>
           </Table>
         )}
+        </Skeleton>
       </div>
 
       {/* Pagination Footer */}

@@ -1,4 +1,5 @@
 import React from "react";
+import { Skeleton } from "boneyard-js/react";
 import { Users, Package, Stethoscope, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Stats } from "@/types/person";
@@ -29,6 +30,58 @@ export function CensoStats({
   return (
     <div className="space-y-4">
       {/* Main Stats Grid */}
+      <Skeleton
+        name="censo-stats"
+        loading={!stats}
+        animate="pulse"
+        transition={300}
+        fixture={
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-slate-500/5 to-transparent shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Censo</span>
+                  <Users className="size-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="mt-2">
+                  <span className="text-2xl font-bold tracking-tight">1,234</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <span className="font-semibold text-red-500">156</span> vulnerables
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Personas con suministros</span>
+                  <Package className="size-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="mt-2">
+                  <span className="text-2xl font-bold tracking-tight">890</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <span>con entrega</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-rose-500/5 to-transparent shadow-sm">
+              <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Atenc. Médica</span>
+                  <Stethoscope className="size-4 text-rose-600 dark:text-rose-400" />
+                </div>
+                <div className="mt-2">
+                  <span className="text-2xl font-bold tracking-tight">432</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <span>atendidos</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        }
+      >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Total card */}
         <Card 
@@ -113,6 +166,7 @@ export function CensoStats({
           </CardContent>
         </Card>
       </div>
+      </Skeleton>
 
       {/* Sector cards with horizontal scroll */}
       <div className="space-y-1.5">
