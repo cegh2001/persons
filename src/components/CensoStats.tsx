@@ -71,7 +71,7 @@ export function CensoStats({
         >
           <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Suministros</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Personas con suministros</span>
               <Package className="size-4 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div className="mt-2">
