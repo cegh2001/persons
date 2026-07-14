@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Person, Stats } from "@/types/person";
 
 export function useCenso() {
+  // Auth states
+  const [user, setUser] = useState<{ email: string; role: "admin" | "visor" } | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   // Data states
   const [persons, setPersons] = useState<Person[]>([]);
   const [total, setTotal] = useState(0);
@@ -43,8 +47,34 @@ export function useCenso() {
     ? stats.byLocation.map((l) => l.location) 
     : ["Calle Paez", "Casco Central", "El Collao", "Palmar Este", "San Julian", "Catia La Mar", "La Llanada", "Boca de Río / Caribe", "La Tomita / Casco Central", "Calle Vargas", "Calle La Iglesia", "El Dispensario", "Calle Guaicaipuro", "Maiquetia", "Quebrada Seca"];
 
-  // Fetch data
+  // Verify authentication on mount
+  const checkAuth = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    } catch (err) {
+      setUser(null);
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  // Fetch data only if authenticated
   const fetchData = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -64,6 +94,11 @@ export function useCenso() {
         fetch("/api/stats")
       ]);
 
+      if (resPersons.status === 401 || resStats.status === 401) {
+        setUser(null);
+        return;
+      }
+
       if (resPersons.ok) {
         const data = await resPersons.json();
         setPersons(data.persons);
@@ -80,11 +115,32 @@ export function useCenso() {
     } finally {
       setLoading(false);
     }
-  }, [search, locationFilter, vulnerabilityFilter, suppliesFilter, medicalFilter, page]);
+  }, [search, locationFilter, vulnerabilityFilter, suppliesFilter, medicalFilter, page, user]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (user) {
+      fetchData();
+    }
+  }, [fetchData, user]);
+
+  // Handle successful login from component
+  const handleLoginSuccess = (userData: { email: string; role: "admin" | "visor" }) => {
+    setUser(userData);
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (res.ok) {
+        setUser(null);
+        setPersons([]);
+        setStats(null);
+      }
+    } catch (err) {
+      console.error("Error logging out:", err);
+    }
+  };
 
   // Reset page when filter or search changes
   const handleSearchChange = (val: string) => {
@@ -112,8 +168,9 @@ export function useCenso() {
     setPage(1);
   };
 
-  // Toggle vulnerable status instantly
+  // Toggle vulnerable status instantly (Admin only)
   const handleToggleVulnerable = async (person: Person) => {
+    if (user?.role !== "admin") return;
     try {
       const res = await fetch(`/api/persons/${person.id}`, {
         method: "PUT",
@@ -130,8 +187,9 @@ export function useCenso() {
     }
   };
 
-  // Toggle supplies status instantly
+  // Toggle supplies status instantly (Admin only)
   const handleToggleSupplies = async (person: Person) => {
+    if (user?.role !== "admin") return;
     try {
       const res = await fetch(`/api/persons/${person.id}`, {
         method: "PUT",
@@ -148,8 +206,9 @@ export function useCenso() {
     }
   };
 
-  // Toggle medical status instantly
+  // Toggle medical status instantly (Admin only)
   const handleToggleMedical = async (person: Person) => {
+    if (user?.role !== "admin") return;
     try {
       const res = await fetch(`/api/persons/${person.id}`, {
         method: "PUT",
@@ -166,8 +225,9 @@ export function useCenso() {
     }
   };
 
-  // Open add dialog
+  // Open add dialog (Admin only)
   const openAddDialog = () => {
+    if (user?.role !== "admin") return;
     setFormData({
       id: 0,
       name: "",
@@ -182,8 +242,9 @@ export function useCenso() {
     setIsAddOpen(true);
   };
 
-  // Open edit dialog
+  // Open edit dialog (Admin only)
   const openEditDialog = (person: Person) => {
+    if (user?.role !== "admin") return;
     setFormData({
       id: person.id,
       name: person.name,
@@ -198,8 +259,9 @@ export function useCenso() {
     setIsEditOpen(true);
   };
 
-  // Open delete dialog
+  // Open delete dialog (Admin only)
   const openDeleteDialog = (person: Person) => {
+    if (user?.role !== "admin") return;
     setFormData({
       id: person.id,
       name: person.name,
@@ -213,9 +275,10 @@ export function useCenso() {
     setIsDeleteOpen(true);
   };
 
-  // Submit create person
+  // Submit create person (Admin only)
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (user?.role !== "admin") return;
     if (!formData.name.trim() || !formData.location) {
       setError("El nombre y el sector son obligatorios.");
       return;
@@ -251,9 +314,10 @@ export function useCenso() {
     }
   };
 
-  // Submit update person
+  // Submit update person (Admin only)
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (user?.role !== "admin") return;
     if (!formData.name.trim() || !formData.location) {
       setError("El nombre y el sector son obligatorios.");
       return;
@@ -289,8 +353,9 @@ export function useCenso() {
     }
   };
 
-  // Submit delete person
+  // Submit delete person (Admin only)
   const handleDeleteSubmit = async () => {
+    if (user?.role !== "admin") return;
     setSubmitting(true);
     try {
       const res = await fetch(`/api/persons/${formData.id}`, {
@@ -309,6 +374,8 @@ export function useCenso() {
   };
 
   return {
+    user,
+    authLoading,
     persons,
     total,
     totalPages,
@@ -334,6 +401,8 @@ export function useCenso() {
     setError,
     submitting,
     fetchData,
+    handleLoginSuccess,
+    handleLogout,
     handleSearchChange,
     handleLocationFilterChange,
     handleVulnerabilityFilterChange,

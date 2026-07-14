@@ -36,6 +36,7 @@ interface CensoTableProps {
   onToggleMedical: (person: Person) => void;
   onEditOpen: (person: Person) => void;
   onDeleteOpen: (person: Person) => void;
+  role: "admin" | "visor";
 }
 
 export function CensoTable({
@@ -49,8 +50,11 @@ export function CensoTable({
   onToggleSupplies,
   onToggleMedical,
   onEditOpen,
-  onDeleteOpen
+  onDeleteOpen,
+  role
 }: CensoTableProps) {
+  const isAdmin = role === "admin";
+
   return (
     <>
       {/* Table Container */}
@@ -84,7 +88,7 @@ export function CensoTable({
                 <TableHead>Vulnerabilidad</TableHead>
                 <TableHead>Asistencia</TableHead>
                 <TableHead className="hidden md:table-cell max-w-md">Notas y Entregas</TableHead>
-                <TableHead className="w-24 text-right">Acciones</TableHead>
+                {isAdmin && <TableHead className="w-24 text-right">Acciones</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -112,51 +116,88 @@ export function CensoTable({
                   </TableCell>
                   <TableCell>
                     {person.is_vulnerable === 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => onToggleVulnerable(person)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/50 transition-all"
-                        title="Haz clic para quitar tilde de vulnerable"
-                      >
-                        <Heart className="size-3 fill-red-500 text-red-500" /> Vulnerable
-                      </button>
+                      isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() => onToggleVulnerable(person)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/50 transition-all"
+                          title="Haz clic para quitar tilde de vulnerable"
+                        >
+                          <Heart className="size-3 fill-red-500 text-red-500" /> Vulnerable
+                        </button>
+                      ) : (
+                        <div className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-red-200 bg-red-50 text-red-700 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-400">
+                          <Heart className="size-3 fill-red-500 text-red-500" /> Vulnerable
+                        </div>
+                      )
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => onToggleVulnerable(person)}
-                        className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-slate-200 bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-red-950/20 dark:hover:text-red-400 dark:hover:border-red-900/50 transition-all"
-                        title="Haz clic para marcar como vulnerable"
-                      >
-                        <HeartOff className="size-3 text-slate-400 group-hover:text-red-500" /> Estable
-                      </button>
+                      isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() => onToggleVulnerable(person)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-slate-200 bg-slate-100 text-slate-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-red-950/20 dark:hover:text-red-400 dark:hover:border-red-900/50 transition-all"
+                          title="Haz clic para marcar como vulnerable"
+                        >
+                          <HeartOff className="size-3 text-slate-400 group-hover:text-red-500" /> Estable
+                        </button>
+                      ) : (
+                        <div className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border border-slate-200 bg-slate-100 text-slate-600 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
+                          <HeartOff className="size-3 text-slate-400" /> Estable
+                        </div>
+                      )
                     )}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
-                      <button
-                        type="button"
-                        onClick={() => onToggleSupplies(person)}
-                        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all ${
-                          person.received_supplies === 1
-                            ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400"
-                            : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 dark:bg-slate-900 dark:border-slate-800"
-                        }`}
-                        title="Click para cambiar estado de suministros"
-                      >
-                        <Package className="size-3 mr-1 inline" /> Suministros
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onToggleMedical(person)}
-                        className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all ${
-                          person.received_medical === 1
-                            ? "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:border-rose-900/50 dark:text-rose-400"
-                            : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 dark:bg-slate-900 dark:border-slate-800"
-                        }`}
-                        title="Click para cambiar estado de atención médica"
-                      >
-                        <Stethoscope className="size-3 mr-1 inline" /> Médica
-                      </button>
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() => onToggleSupplies(person)}
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all ${
+                            person.received_supplies === 1
+                              ? "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400"
+                              : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 dark:bg-slate-900 dark:border-slate-800"
+                          }`}
+                          title="Click para cambiar estado de suministros"
+                        >
+                          <Package className="size-3 mr-1 inline" /> Suministros
+                        </button>
+                      ) : (
+                        <div
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                            person.received_supplies === 1
+                              ? "bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-900/50 dark:text-indigo-400"
+                              : "bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-800"
+                          }`}
+                        >
+                          <Package className="size-3 mr-1 inline" /> Suministros
+                        </div>
+                      )}
+
+                      {isAdmin ? (
+                        <button
+                          type="button"
+                          onClick={() => onToggleMedical(person)}
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all ${
+                            person.received_medical === 1
+                              ? "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/30 dark:border-rose-900/50 dark:text-rose-400"
+                              : "bg-slate-100 border-slate-200 text-slate-400 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 dark:bg-slate-900 dark:border-slate-800"
+                          }`}
+                          title="Click para cambiar estado de atención médica"
+                        >
+                          <Stethoscope className="size-3 mr-1 inline" /> Médica
+                        </button>
+                      ) : (
+                        <div
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                            person.received_medical === 1
+                              ? "bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/30 dark:border-rose-900/50 dark:text-rose-400"
+                              : "bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-800"
+                          }`}
+                        >
+                          <Stethoscope className="size-3 mr-1 inline" /> Médica
+                        </div>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell max-w-md text-xs text-muted-foreground">
@@ -167,28 +208,30 @@ export function CensoTable({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover/row:opacity-100 transition-opacity">
-                      <Button 
-                        variant="ghost" 
-                        size="icon-xs" 
-                        onClick={() => onEditOpen(person)}
-                        className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        title="Editar damnificado"
-                      >
-                        <Edit2 className="size-3.5" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon-xs" 
-                        onClick={() => onDeleteOpen(person)}
-                        className="text-destructive/80 hover:text-destructive hover:bg-destructive/10"
-                        title="Eliminar damnificado"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
+                  {isAdmin && (
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover/row:opacity-100 transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="icon-xs" 
+                          onClick={() => onEditOpen(person)}
+                          className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          title="Editar damnificado"
+                        >
+                          <Edit2 className="size-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon-xs" 
+                          onClick={() => onDeleteOpen(person)}
+                          className="text-destructive/80 hover:text-destructive hover:bg-destructive/10"
+                          title="Eliminar damnificado"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

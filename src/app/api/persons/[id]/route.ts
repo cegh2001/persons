@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPerson, updatePerson, deletePerson } from "@/lib/db";
+import { getServerSession } from "@/lib/auth";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = getServerSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado. Inicie sesión." }, { status: 401 });
+    }
+
     const { id } = await params;
     const person = await getPerson(Number(id));
     if (!person) {
@@ -23,6 +29,14 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = getServerSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado. Inicie sesión." }, { status: 401 });
+    }
+    if (session.role !== "admin") {
+      return NextResponse.json({ error: "Acceso denegado. Permisos de administrador requeridos." }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await req.json();
     const { name, document_id, location, is_vulnerable, notes, received_supplies, received_medical } = body;
@@ -48,10 +62,18 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = getServerSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado. Inicie sesión." }, { status: 401 });
+    }
+    if (session.role !== "admin") {
+      return NextResponse.json({ error: "Acceso denegado. Permisos de administrador requeridos." }, { status: 403 });
+    }
+
     const { id } = await params;
     const deleted = await deletePerson(Number(id));
     if (!deleted) {
@@ -63,3 +85,4 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+

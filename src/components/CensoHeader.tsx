@@ -1,13 +1,15 @@
 import React from "react";
-import { Plus, Sparkles, Database } from "lucide-react";
+import { Plus, Sparkles, Database, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface CensoHeaderProps {
   onAddOpen: () => void;
+  role: "admin" | "visor";
+  onLogout: () => void;
 }
 
-export function CensoHeader({ onAddOpen }: CensoHeaderProps) {
+export function CensoHeader({ onAddOpen, role, onLogout }: CensoHeaderProps) {
   return (
     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200/60 dark:border-slate-800/60 pb-6">
       <div className="space-y-1.5">
@@ -18,6 +20,13 @@ export function CensoHeader({ onAddOpen }: CensoHeaderProps) {
           <Badge variant="outline" className="text-xs bg-slate-500/10 text-slate-600 border-slate-200/50 dark:text-slate-400">
             <Database className="size-3 mr-1 inline" /> SQLite Activo
           </Badge>
+          <Badge variant="outline" className={`text-xs capitalize font-semibold border ${
+            role === "admin" 
+              ? "bg-emerald-500/10 text-emerald-600 border-emerald-200/50 dark:text-emerald-400 dark:border-emerald-900/40"
+              : "bg-amber-500/10 text-amber-600 border-amber-200/50 dark:text-amber-400 dark:border-amber-900/40"
+          }`}>
+            Rol: {role === "admin" ? "Administrador" : "Visor"}
+          </Badge>
         </div>
         <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-100 dark:via-indigo-200 dark:to-slate-100 bg-clip-text text-transparent sm:text-3xl">
           Censo de Damnificados
@@ -27,12 +36,23 @@ export function CensoHeader({ onAddOpen }: CensoHeaderProps) {
         </p>
       </div>
 
-      <Button 
-        onClick={onAddOpen} 
-        className="w-full md:w-auto shadow-md shadow-indigo-600/10 hover:shadow-lg hover:shadow-indigo-600/20 transition-all"
-      >
-        <Plus className="size-4 mr-2" /> Registrar Damnificado
-      </Button>
+      <div className="flex items-center gap-2.5 w-full md:w-auto">
+        {role === "admin" && (
+          <Button 
+            onClick={onAddOpen} 
+            className="flex-1 md:flex-initial shadow-md shadow-indigo-600/10 hover:shadow-lg hover:shadow-indigo-600/20 transition-all"
+          >
+            <Plus className="size-4 mr-2" /> Registrar Damnificado
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={onLogout}
+          className="flex-1 md:flex-initial text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 dark:hover:text-red-400"
+        >
+          <LogOut className="size-4 mr-2" /> Cerrar Sesión
+        </Button>
+      </div>
     </header>
   );
 }

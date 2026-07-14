@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listPersons, createPerson } from "@/lib/db";
+import { getServerSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = getServerSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado. Inicie sesión." }, { status: 401 });
+    }
+
     const searchParams = req.nextUrl.searchParams;
     const search = searchParams.get("search") || undefined;
     const location = searchParams.get("location") || undefined;
@@ -37,6 +43,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = getServerSession(req);
+    if (!session) {
+      return NextResponse.json({ error: "No autorizado. Inicie sesión." }, { status: 401 });
+    }
+    if (session.role !== "admin") {
+      return NextResponse.json({ error: "Acceso denegado. Permisos de administrador requeridos." }, { status: 403 });
+    }
+
     const body = await req.json();
     const { name, document_id, location, is_vulnerable, notes, received_supplies, received_medical } = body;
 
@@ -59,3 +73,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
