@@ -5,6 +5,9 @@ import { CensoTable } from "@/components/CensoTable";
 import { CensoStats } from "@/components/CensoStats";
 import { Person, Stats } from "@/types/person";
 
+// Only available in development for boneyard CLI capture
+export const dynamic = "force-static";
+
 const MOCK_STATS: Stats = {
   total: 1234,
   vulnerableTotal: 156,
@@ -28,6 +31,14 @@ const MOCK_PERSONS: Person[] = [
 ];
 
 export default function BonesCapturePage() {
+  if (process.env.NODE_ENV === "production") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <p className="text-sm text-muted-foreground">Not available in production.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
       <div className="max-w-[1400px] mx-auto relative space-y-6">

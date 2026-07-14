@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import "@/bones/registry";
 import { useCenso } from "@/hooks/useCenso";
 import { CensoHeader } from "@/components/CensoHeader";
 import { CensoStats } from "@/components/CensoStats";
