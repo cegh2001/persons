@@ -62,7 +62,7 @@ export function CensoStats({
         {/* Supplies card */}
         <Card 
           onClick={() => onSuppliesFilterChange(suppliesFilter === "yes" ? "all" : "yes")}
-          title={suppliesFilter === "yes" ? "Quitar filtro de suministros" : "Filtrar por suministros entregados"}
+          title={suppliesFilter === "yes" ? "Quitar filtro" : "Filtrar por personas con suministros entregados"}
           className={`cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent ${
             suppliesFilter === "yes" 
               ? "ring-2 ring-indigo-500/50 bg-indigo-500/5 dark:bg-indigo-500/10 shadow-sm" 
@@ -77,7 +77,7 @@ export function CensoStats({
             <div className="mt-2">
               <span className="text-2xl font-bold tracking-tight">{stats?.suppliesTotal || 0}</span>
               <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-between">
-                <span>entregados</span>
+                <span>con entrega</span>
                 {suppliesFilter === "yes" && (
                   <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">Filtrado</span>
                 )}
@@ -89,7 +89,7 @@ export function CensoStats({
         {/* Medical card */}
         <Card 
           onClick={() => onMedicalFilterChange(medicalFilter === "yes" ? "all" : "yes")}
-          title={medicalFilter === "yes" ? "Quitar filtro de atención médica" : "Filtrar por atención médica recibida"}
+          title={medicalFilter === "yes" ? "Quitar filtro" : "Filtrar por personas con atención médica recibida"}
           className={`cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-rose-500/5 to-transparent ${
             medicalFilter === "yes" 
               ? "ring-2 ring-rose-500/50 bg-rose-500/5 dark:bg-rose-500/10 shadow-sm" 
