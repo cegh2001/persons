@@ -36,50 +36,75 @@ export function CensoStats({
         animate="pulse"
         transition={300}
         fixture={
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-slate-500/5 to-transparent shadow-sm">
-              <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Censo</span>
-                  <Users className="size-4 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div className="mt-2">
-                  <span className="text-2xl font-bold tracking-tight">1,234</span>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    <span className="font-semibold text-red-500">156</span> vulnerables
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent shadow-sm">
-              <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Personas con suministros</span>
-                  <Package className="size-4 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div className="mt-2">
-                  <span className="text-2xl font-bold tracking-tight">890</span>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    <span>con entrega</span>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-rose-500/5 to-transparent shadow-sm">
-              <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Atenc. Médica</span>
-                  <Stethoscope className="size-4 text-rose-600 dark:text-rose-400" />
-                </div>
-                <div className="mt-2">
-                  <span className="text-2xl font-bold tracking-tight">432</span>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    <span>atendidos</span>
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-slate-500/5 to-transparent shadow-sm">
+                <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Censo</span>
+                    <Users className="size-4 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold tracking-tight">1,234</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <span className="font-semibold text-red-500">156</span> vulnerables
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent shadow-sm">
+                <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Personas con suministros</span>
+                    <Package className="size-4 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold tracking-tight">890</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <span>con entrega</span>
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-rose-500/5 to-transparent shadow-sm">
+                <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Atenc. Médica</span>
+                    <Stethoscope className="size-4 text-rose-600 dark:text-rose-400" />
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold tracking-tight">432</span>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <span>atendidos</span>
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-1.5 mt-4">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-0.5">
+                Filtro rápido por sector
+              </span>
+              <div className="flex gap-2.5 overflow-x-auto pb-2 pt-0.5">
+                {["Calle Paez", "Casco Central", "El Collao", "Palmar Este", "San Julian"].map((sector) => (
+                  <Card key={sector} className="border-slate-200/60 dark:border-slate-800/60 flex-shrink-0 w-36 shadow-sm">
+                    <CardContent className="p-3 flex flex-col justify-between h-full min-h-20">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 truncate w-full">{sector}</span>
+                        <MapPin className="size-3.5 flex-shrink-0 text-indigo-500" />
+                      </div>
+                      <div className="mt-1">
+                        <span className="text-xl font-bold tracking-tight">200</span>
+                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                          <span className="font-semibold text-red-500">30</span> vulnerables
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </>
         }
       >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -166,7 +191,6 @@ export function CensoStats({
           </CardContent>
         </Card>
       </div>
-      </Skeleton>
 
       {/* Sector cards with horizontal scroll */}
       <div className="space-y-1.5">
@@ -225,6 +249,7 @@ export function CensoStats({
           })}
         </div>
       </div>
+      </Skeleton>
     </div>
   );
 }

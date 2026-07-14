@@ -3,12 +3,12 @@
 import { registerBones } from 'boneyard-js'
 import { configureBoneyard } from 'boneyard-js/react'
 
-import _censo_stats from './censo-stats.bones.json'
 import _censo_table from './censo-table.bones.json'
+import _censo_stats from './censo-stats.bones.json'
 
 configureBoneyard({"color":"rgba(0,0,0,0.06)","animate":"shimmer","shimmerColor":"rgba(0,0,0,0.02)","speed":"2s"})
 
 registerBones({
-  "censo-stats": _censo_stats,
   "censo-table": _censo_table,
+  "censo-stats": _censo_stats,
 })
