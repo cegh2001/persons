@@ -26,6 +26,10 @@ export default function Home() {
           sectors={censo.sectors} 
           locationFilter={censo.locationFilter}
           onLocationFilterChange={censo.handleLocationFilterChange}
+          suppliesFilter={censo.suppliesFilter}
+          onSuppliesFilterChange={censo.handleSuppliesFilterChange}
+          medicalFilter={censo.medicalFilter}
+          onMedicalFilterChange={censo.handleMedicalFilterChange}
         />
 
         <section className="bg-card rounded-xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm overflow-hidden">

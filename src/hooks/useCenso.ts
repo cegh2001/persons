@@ -13,6 +13,8 @@ export function useCenso() {
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("all");
   const [vulnerabilityFilter, setVulnerabilityFilter] = useState("all"); // "all", "vulnerable", "stable"
+  const [suppliesFilter, setSuppliesFilter] = useState("all"); // "all", "yes", "no"
+  const [medicalFilter, setMedicalFilter] = useState("all"); // "all", "yes", "no"
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
@@ -50,6 +52,10 @@ export function useCenso() {
       if (locationFilter !== "all") params.append("location", locationFilter);
       if (vulnerabilityFilter === "vulnerable") params.append("is_vulnerable", "1");
       if (vulnerabilityFilter === "stable") params.append("is_vulnerable", "0");
+      if (suppliesFilter === "yes") params.append("received_supplies", "1");
+      if (suppliesFilter === "no") params.append("received_supplies", "0");
+      if (medicalFilter === "yes") params.append("received_medical", "1");
+      if (medicalFilter === "no") params.append("received_medical", "0");
       params.append("page", String(page));
       params.append("pageSize", String(pageSize));
 
@@ -74,7 +80,7 @@ export function useCenso() {
     } finally {
       setLoading(false);
     }
-  }, [search, locationFilter, vulnerabilityFilter, page]);
+  }, [search, locationFilter, vulnerabilityFilter, suppliesFilter, medicalFilter, page]);
 
   useEffect(() => {
     fetchData();
@@ -93,6 +99,16 @@ export function useCenso() {
 
   const handleVulnerabilityFilterChange = (val: string) => {
     setVulnerabilityFilter(val);
+    setPage(1);
+  };
+
+  const handleSuppliesFilterChange = (val: string) => {
+    setSuppliesFilter(val);
+    setPage(1);
+  };
+
+  const handleMedicalFilterChange = (val: string) => {
+    setMedicalFilter(val);
     setPage(1);
   };
 
@@ -301,6 +317,8 @@ export function useCenso() {
     search,
     locationFilter,
     vulnerabilityFilter,
+    suppliesFilter,
+    medicalFilter,
     page,
     setPage,
     isAddOpen,
@@ -319,6 +337,8 @@ export function useCenso() {
     handleSearchChange,
     handleLocationFilterChange,
     handleVulnerabilityFilterChange,
+    handleSuppliesFilterChange,
+    handleMedicalFilterChange,
     handleToggleVulnerable,
     handleToggleSupplies,
     handleToggleMedical,

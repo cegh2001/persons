@@ -8,20 +8,43 @@ interface CensoStatsProps {
   sectors: string[];
   locationFilter: string;
   onLocationFilterChange: (val: string) => void;
+  suppliesFilter: string;
+  onSuppliesFilterChange: (val: string) => void;
+  medicalFilter: string;
+  onMedicalFilterChange: (val: string) => void;
 }
 
 export function CensoStats({
   stats,
   sectors,
   locationFilter,
-  onLocationFilterChange
+  onLocationFilterChange,
+  suppliesFilter,
+  onSuppliesFilterChange,
+  medicalFilter,
+  onMedicalFilterChange
 }: CensoStatsProps) {
+  const hasActiveCardFilter = suppliesFilter !== "all" || medicalFilter !== "all";
+
   return (
     <div className="space-y-4">
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Total card */}
-        <Card className="shadow-sm border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-slate-500/5 to-transparent">
+        <Card 
+          onClick={() => {
+            if (hasActiveCardFilter) {
+              onSuppliesFilterChange("all");
+              onMedicalFilterChange("all");
+            }
+          }}
+          title={hasActiveCardFilter ? "Hacé click para limpiar los filtros de suministros y atención médica" : undefined}
+          className={`border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-slate-500/5 to-transparent ${
+            hasActiveCardFilter 
+              ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 ring-1 ring-slate-500/30" 
+              : "shadow-sm"
+          }`}
+        >
           <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Censo</span>
@@ -37,7 +60,15 @@ export function CensoStats({
         </Card>
 
         {/* Supplies card */}
-        <Card className="shadow-sm border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent">
+        <Card 
+          onClick={() => onSuppliesFilterChange(suppliesFilter === "yes" ? "all" : "yes")}
+          title={suppliesFilter === "yes" ? "Quitar filtro de suministros" : "Filtrar por suministros entregados"}
+          className={`cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent ${
+            suppliesFilter === "yes" 
+              ? "ring-2 ring-indigo-500/50 bg-indigo-500/5 dark:bg-indigo-500/10 shadow-sm" 
+              : "shadow-sm"
+          }`}
+        >
           <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Suministros</span>
@@ -45,15 +76,26 @@ export function CensoStats({
             </div>
             <div className="mt-2">
               <span className="text-2xl font-bold tracking-tight">{stats?.suppliesTotal || 0}</span>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                entregados
+              <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-between">
+                <span>entregados</span>
+                {suppliesFilter === "yes" && (
+                  <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">Filtrado</span>
+                )}
               </p>
             </div>
           </CardContent>
         </Card>
 
         {/* Medical card */}
-        <Card className="shadow-sm border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-rose-500/5 to-transparent">
+        <Card 
+          onClick={() => onMedicalFilterChange(medicalFilter === "yes" ? "all" : "yes")}
+          title={medicalFilter === "yes" ? "Quitar filtro de atención médica" : "Filtrar por atención médica recibida"}
+          className={`cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-rose-500/5 to-transparent ${
+            medicalFilter === "yes" 
+              ? "ring-2 ring-rose-500/50 bg-rose-500/5 dark:bg-rose-500/10 shadow-sm" 
+              : "shadow-sm"
+          }`}
+        >
           <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Atenc. Médica</span>
@@ -61,8 +103,11 @@ export function CensoStats({
             </div>
             <div className="mt-2">
               <span className="text-2xl font-bold tracking-tight">{stats?.medicalTotal || 0}</span>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                atendidos
+              <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-between">
+                <span>atendidos</span>
+                {medicalFilter === "yes" && (
+                  <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">Filtrado</span>
+                )}
               </p>
             </div>
           </CardContent>
