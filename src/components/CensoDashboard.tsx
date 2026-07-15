@@ -71,7 +71,7 @@ export function CensoDashboard() {
 
           <CensoTable
             persons={data.persons}
-            loading={data.loading}
+            loading={data.loading || data.initialLoading}
             page={data.page}
             totalPages={data.totalPages}
             total={data.total}

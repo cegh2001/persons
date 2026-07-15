@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import type { Person } from "@/types/person";
 import type { AuthUser } from "./useAuth";
 
@@ -113,7 +114,7 @@ export function useCensoForm(
           setError(data.error || "Ocurrió un error.");
         }
       } catch {
-        setError("Error de red.");
+        toast.error("Error de red.");
       } finally {
         setSubmitting(false);
       }

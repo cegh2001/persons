@@ -134,8 +134,12 @@ export async function listPersons(filters: PersonFilters = {}) {
   }
 
   if (filters.search && filters.search.trim() !== "") {
-    const searchVal = `%${filters.search.trim()}%`;
-    conditions.push("(name LIKE ? OR document_id LIKE ? OR location LIKE ? OR raw_name LIKE ? OR notes LIKE ?)");
+    // Escape SQLite LIKE wildcards so users can search for literal % and _
+    const escaped = filters.search.trim().replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+    const searchVal = `%${escaped}%`;
+    conditions.push(
+      "(name LIKE ? ESCAPE '\\' OR document_id LIKE ? ESCAPE '\\' OR location LIKE ? ESCAPE '\\' OR raw_name LIKE ? ESCAPE '\\' OR notes LIKE ? ESCAPE '\\')"
+    );
     params.push(searchVal, searchVal, searchVal, searchVal, searchVal);
   }
 

@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import type { Person } from "@/types/person";
 import type { AuthUser } from "./useAuth";
 
@@ -35,6 +36,7 @@ export function useCensoDelete(
       }
     } catch (err) {
       console.error("Error deleting person:", err);
+      toast.error("No se pudo eliminar el registro.");
     } finally {
       setSubmitting(false);
     }
