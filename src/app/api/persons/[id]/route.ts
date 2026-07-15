@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPerson, updatePerson, deletePerson } from "@/lib/db";
 import { getServerSession } from "@/lib/auth";
+import { updatePersonSchema, idParamSchema } from "@/lib/validation";
+import { checkRateLimit, getRateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
+import { ZodError } from "zod";
 
 export async function GET(
   req: NextRequest,
@@ -13,12 +16,16 @@ export async function GET(
     }
 
     const { id } = await params;
-    const person = await getPerson(Number(id));
+    const parsedId = idParamSchema.parse(id);
+    const person = await getPerson(parsedId);
     if (!person) {
       return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
     return NextResponse.json(person);
   } catch (err) {
+    if (err instanceof ZodError) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    }
     console.error("Error getting person:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -37,25 +44,49 @@ export async function PUT(
       return NextResponse.json({ error: "Acceso denegado. Permisos de administrador requeridos." }, { status: 403 });
     }
 
+    // ── Rate limit ──────────────────────────────────────────────
+    const rlKey = getRateLimitKey(req);
+    const rl = checkRateLimit(rlKey, RATE_LIMITS.mutation);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Esperá un momento." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          },
+        }
+      );
+    }
+
+    // ── Validate input ──────────────────────────────────────────
     const { id } = await params;
+    const parsedId = idParamSchema.parse(id);
     const body = await req.json();
-    const { name, document_id, location, is_vulnerable, notes, received_supplies, received_medical } = body;
+    const parsed = updatePersonSchema.parse(body);
 
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (document_id !== undefined) updateData.document_id = document_id;
-    if (location !== undefined) updateData.location = location;
-    if (is_vulnerable !== undefined) updateData.is_vulnerable = is_vulnerable ? 1 : 0;
-    if (notes !== undefined) updateData.notes = notes;
-    if (received_supplies !== undefined) updateData.received_supplies = received_supplies ? 1 : 0;
-    if (received_medical !== undefined) updateData.received_medical = received_medical ? 1 : 0;
+    const updateData: Record<string, unknown> = {};
+    if (parsed.name !== undefined) updateData.name = parsed.name;
+    if (parsed.document_id !== undefined) updateData.document_id = parsed.document_id;
+    if (parsed.location !== undefined) updateData.location = parsed.location;
+    if (parsed.is_vulnerable !== undefined) updateData.is_vulnerable = parsed.is_vulnerable ? 1 : 0;
+    if (parsed.notes !== undefined) updateData.notes = parsed.notes;
+    if (parsed.received_supplies !== undefined) updateData.received_supplies = parsed.received_supplies ? 1 : 0;
+    if (parsed.received_medical !== undefined) updateData.received_medical = parsed.received_medical ? 1 : 0;
 
-    const person = await updatePerson(Number(id), updateData);
+    const person = await updatePerson(parsedId, updateData as any);
     if (!person) {
       return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
     return NextResponse.json(person);
   } catch (err) {
+    if (err instanceof ZodError) {
+      const messages = err.issues.map((e) => e.message).join(", ");
+      return NextResponse.json({ error: messages }, { status: 400 });
+    }
+    if (err instanceof SyntaxError) {
+      return NextResponse.json({ error: "Cuerpo de solicitud JSON inválido." }, { status: 400 });
+    }
     console.error("Error updating person:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -74,15 +105,35 @@ export async function DELETE(
       return NextResponse.json({ error: "Acceso denegado. Permisos de administrador requeridos." }, { status: 403 });
     }
 
+    // ── Rate limit ──────────────────────────────────────────────
+    const rlKey = getRateLimitKey(req);
+    const rl = checkRateLimit(rlKey, RATE_LIMITS.mutation);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Esperá un momento." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          },
+        }
+      );
+    }
+
+    // ── Validate params ─────────────────────────────────────────
     const { id } = await params;
-    const deleted = await deletePerson(Number(id));
+    const parsedId = idParamSchema.parse(id);
+
+    const deleted = await deletePerson(parsedId);
     if (!deleted) {
       return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
     return NextResponse.json({ success: true });
   } catch (err) {
+    if (err instanceof ZodError) {
+      return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+    }
     console.error("Error deleting person:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

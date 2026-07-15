@@ -1,23 +1,67 @@
 import { NextRequest } from "next/server";
 import crypto from "crypto";
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "default-sismo-session-secret-key-2026-replace-in-prod";
-const COOKIE_NAME = "auth_session";
+const isProduction = process.env.NODE_ENV === "production";
+const COOKIE_NAME = isProduction ? "__Host-auth_session" : "auth_session";
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// Pre-calculated hashes using pbkdf2Sync (100k iterations, sha512, 64 bytes)
-const USERS = [
-  {
-    email: "cargonzalez0601@gmail.com",
-    role: "admin" as const,
-    passwordHash: "8cbf09c21729043d5b3ad79d328fb343:b14bd66274989bef844a191c73c57ac0ea3ef093917511bc80a7c1370570c1b4223325ccfe6a9202878e41f031e7841b9a1701b5e64ad2f374c1d21851ad281c"
-  },
-  {
-    email: "parrq.candelaria.c@gmail.com",
-    role: "visor" as const,
-    passwordHash: "cd88e3aced5286baa56ad3dd97a8ab2e:3db4de0fac9f0d858b4f82a6e3843362dc8a8f1540361b5305dcaa10e3f650163a3b392b8d902fc5a375bb4d98fc3afad9a10399901ad2b9a81b113cb172232f"
+// ── Secrets (lazy — fail at runtime, never at build time) ──────────────
+
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error(
+      "SESSION_SECRET environment variable is required but not set.\n" +
+      "Generate one with: node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\""
+    );
   }
-];
+  // Block the old default value even if someone set it to the default string
+  if (secret === "default-sismo-session-secret-key-2026-replace-in-prod") {
+    throw new Error(
+      "SESSION_SECRET is set to the insecure default value. Generate a real secret."
+    );
+  }
+  return secret;
+}
+
+// ── Users from environment ────────────────────────────────────────────
+
+interface StoredUser {
+  email: string;
+  role: "admin" | "visor";
+  passwordHash: string; // format: salt:hexHash
+}
+
+function getUsers(): StoredUser[] {
+  const raw = process.env.AUTH_USERS;
+  if (!raw) {
+    throw new Error(
+      "AUTH_USERS environment variable is required but not set.\n" +
+      "Format: JSON array — [{\"email\":\"...\",\"role\":\"admin|visor\",\"passwordHash\":\"salt:hash\"}]\n" +
+      "Generate hashes with: npx tsx scripts/generate-hash.ts"
+    );
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      throw new Error("AUTH_USERS must be a non-empty JSON array.");
+    }
+    for (const u of parsed) {
+      if (!u.email || !u.role || !u.passwordHash) {
+        throw new Error(`AUTH_USERS entry missing required fields: ${JSON.stringify(u)}`);
+      }
+      if (u.role !== "admin" && u.role !== "visor") {
+        throw new Error(`AUTH_USERS entry has invalid role "${u.role}": ${u.email}`);
+      }
+    }
+    return parsed as StoredUser[];
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error("AUTH_USERS is not valid JSON. Check your environment variable.");
+    }
+    throw err;
+  }
+}
 
 export interface SessionData {
   email: string;
@@ -37,7 +81,9 @@ function verifyPassword(password: string, storedHash: string): boolean {
 }
 
 export function authenticateUser(email: string, password: string): { email: string; role: "admin" | "visor" } | null {
-  const user = USERS.find((u) => u.email.toLowerCase() === email.toLowerCase().trim());
+  const trimmed = email.toLowerCase().trim();
+  const users = getUsers();
+  const user = users.find((u) => u.email.toLowerCase() === trimmed);
   if (!user) return null;
 
   if (verifyPassword(password, user.passwordHash)) {
@@ -52,7 +98,7 @@ export function signToken(payload: Omit<SessionData, "expiresAt">): string {
   const payloadStr = JSON.stringify(sessionData);
   const payloadBase64 = Buffer.from(payloadStr).toString("base64url");
   
-  const hmac = crypto.createHmac("sha256", SESSION_SECRET);
+  const hmac = crypto.createHmac("sha256", getSessionSecret());
   hmac.update(payloadBase64);
   const signature = hmac.digest("base64url");
   
@@ -64,7 +110,7 @@ export function verifyToken(token: string): SessionData | null {
     const [payloadBase64, signature] = token.split(".");
     if (!payloadBase64 || !signature) return null;
 
-    const hmac = crypto.createHmac("sha256", SESSION_SECRET);
+    const hmac = crypto.createHmac("sha256", getSessionSecret());
     hmac.update(payloadBase64);
     const expectedSignature = hmac.digest("base64url");
 
@@ -95,8 +141,8 @@ export const COOKIE_OPTIONS = {
   name: COOKIE_NAME,
   options: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    secure: isProduction,
+    sameSite: "strict" as const,
     path: "/",
     maxAge: 24 * 60 * 60 // 1 day in seconds
   }

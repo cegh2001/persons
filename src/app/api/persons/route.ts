@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listPersons, createPerson } from "@/lib/db";
 import { getServerSession } from "@/lib/auth";
+import { createPersonSchema, listPersonsQuerySchema } from "@/lib/validation";
+import { checkRateLimit, getRateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
+import { ZodError } from "zod";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,33 +12,29 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No autorizado. Inicie sesión." }, { status: 401 });
     }
 
-    const searchParams = req.nextUrl.searchParams;
-    const search = searchParams.get("search") || undefined;
-    const location = searchParams.get("location") || undefined;
-    
-    const isVulnerableParam = searchParams.get("is_vulnerable");
-    const is_vulnerable = isVulnerableParam !== null ? parseInt(isVulnerableParam, 10) : undefined;
+    // ── Validate query params ───────────────────────────────────
+    const rawParams: Record<string, string> = {};
+    req.nextUrl.searchParams.forEach((value, key) => {
+      rawParams[key] = value;
+    });
 
-    const receivedSuppliesParam = searchParams.get("received_supplies");
-    const received_supplies = receivedSuppliesParam !== null ? parseInt(receivedSuppliesParam, 10) : undefined;
+    const parsed = listPersonsQuerySchema.parse(rawParams);
 
-    const receivedMedicalParam = searchParams.get("received_medical");
-    const received_medical = receivedMedicalParam !== null ? parseInt(receivedMedicalParam, 10) : undefined;
-
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const pageSize = parseInt(searchParams.get("pageSize") || "15", 10);
-
-    const result = await listPersons({ 
-      search, 
-      location, 
-      is_vulnerable, 
-      received_supplies,
-      received_medical,
-      page, 
-      pageSize 
+    const result = await listPersons({
+      search: parsed.search,
+      location: parsed.location,
+      is_vulnerable: parsed.is_vulnerable,
+      received_supplies: parsed.received_supplies,
+      received_medical: parsed.received_medical,
+      page: parsed.page,
+      pageSize: parsed.pageSize,
     });
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof ZodError) {
+      const messages = err.issues.map((e) => e.message).join(", ");
+      return NextResponse.json({ error: messages }, { status: 400 });
+    }
     console.error("Error listing persons:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -51,26 +50,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Acceso denegado. Permisos de administrador requeridos." }, { status: 403 });
     }
 
-    const body = await req.json();
-    const { name, document_id, location, is_vulnerable, notes, received_supplies, received_medical } = body;
-
-    if (!name || !location) {
-      return NextResponse.json({ error: "Missing required fields: name and location are required." }, { status: 400 });
+    // ── Rate limit ──────────────────────────────────────────────
+    const rlKey = getRateLimitKey(req);
+    const rl = checkRateLimit(rlKey, RATE_LIMITS.mutation);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Esperá un momento." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          },
+        }
+      );
     }
 
-    const newPerson = await createPerson({ 
-      name, 
-      document_id, 
-      location, 
-      is_vulnerable: is_vulnerable ? 1 : 0, 
-      notes: notes || "",
-      received_supplies: received_supplies !== undefined ? (received_supplies ? 1 : 0) : 1,
-      received_medical: received_medical !== undefined ? (received_medical ? 1 : 0) : 0
+    // ── Validate input ──────────────────────────────────────────
+    const body = await req.json();
+    const parsed = createPersonSchema.parse(body);
+
+    const newPerson = await createPerson({
+      name: parsed.name,
+      document_id: parsed.document_id ?? null,
+      location: parsed.location,
+      is_vulnerable: parsed.is_vulnerable ? 1 : 0,
+      notes: parsed.notes,
+      received_supplies: parsed.received_supplies ? 1 : 0,
+      received_medical: parsed.received_medical ? 1 : 0,
     });
+
     return NextResponse.json(newPerson, { status: 201 });
   } catch (err) {
+    if (err instanceof ZodError) {
+      const messages = err.issues.map((e) => e.message).join(", ");
+      return NextResponse.json({ error: messages }, { status: 400 });
+    }
+    if (err instanceof SyntaxError) {
+      return NextResponse.json({ error: "Cuerpo de solicitud JSON inválido." }, { status: 400 });
+    }
     console.error("Error creating person:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
