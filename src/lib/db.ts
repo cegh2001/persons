@@ -217,6 +217,63 @@ export async function updatePerson(id: number, input: Partial<PersonInput>): Pro
   return getPerson(id);
 }
 
+/**
+ * Partial update with PATCH semantics:
+ * - `notes`: APPENDED to existing notes with " | " separator (not replaced).
+ *            If existing is empty, the new value is used as-is.
+ * - `received_supplies` / `received_medical`: SET to the provided value
+ *            (not toggled — caller decides the target state).
+ * - `name` / `document_id` / `location` / `is_vulnerable`: replaced if provided.
+ * - Any field NOT provided is preserved unchanged.
+ *
+ * Returns the updated row, or `undefined` if the person does not exist.
+ */
+export async function patchPerson(
+  id: number,
+  partial: {
+    name?: string;
+    document_id?: string | null;
+    location?: string;
+    is_vulnerable?: number;
+    notes?: string;
+    received_supplies?: number;
+    received_medical?: number;
+  }
+): Promise<PersonRow | undefined> {
+  const existing = await getPerson(id);
+  if (!existing) return undefined;
+
+  await getDb();
+
+  // Notes: append with " | " separator (preserves history).
+  const trimmedNew = partial.notes?.trim() ?? "";
+  const notes =
+    trimmedNew === ""
+      ? existing.notes
+      : existing.notes === ""
+        ? trimmedNew
+        : `${existing.notes} | ${trimmedNew}`;
+
+  const name = partial.name ?? existing.name;
+  const document_id =
+    partial.document_id !== undefined ? (partial.document_id || null) : existing.document_id;
+  const location = partial.location ?? existing.location;
+  const is_vulnerable =
+    partial.is_vulnerable !== undefined ? partial.is_vulnerable : existing.is_vulnerable;
+  const received_supplies =
+    partial.received_supplies !== undefined ? partial.received_supplies : existing.received_supplies;
+  const received_medical =
+    partial.received_medical !== undefined ? partial.received_medical : existing.received_medical;
+  const raw_name = document_id ? `${name} ${document_id}` : name;
+
+  await client.execute({
+    sql: "UPDATE persons SET raw_name = ?, name = ?, document_id = ?, location = ?, is_vulnerable = ?, notes = ?, received_supplies = ?, received_medical = ? WHERE id = ?",
+    args: [raw_name, name, document_id, location, is_vulnerable, notes, received_supplies, received_medical, id]
+  });
+
+  return getPerson(id);
+}
+
 export async function deletePerson(id: number): Promise<boolean> {
   await getDb();
   const res = await client.execute({
