@@ -1,15 +1,16 @@
 import React from "react";
-import { Plus, Sparkles, Database, LogOut, Users } from "lucide-react";
+import { Plus, Sparkles, Database, LogOut, ScanLine, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface CensoHeaderProps {
   onAddOpen: () => void;
+  onScanOpen: () => void;
   role: "admin" | "visor";
   onLogout: () => void;
 }
 
-export function CensoHeader({ onAddOpen, role, onLogout }: CensoHeaderProps) {
+export function CensoHeader({ onAddOpen, onScanOpen, role, onLogout }: CensoHeaderProps) {
   return (
     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200/60 dark:border-slate-800/60 pb-6">
       <div className="space-y-1.5">
@@ -38,12 +39,22 @@ export function CensoHeader({ onAddOpen, role, onLogout }: CensoHeaderProps) {
 
       <div className="flex items-center gap-2.5 w-full md:w-auto">
         {role === "admin" && (
-          <Button 
-            onClick={onAddOpen} 
-            className="flex-1 md:flex-initial shadow-md shadow-indigo-600/10 hover:shadow-lg hover:shadow-indigo-600/20 transition-all"
-          >
-            <Plus className="size-4 mr-2" /> Registrar Damnificado
-          </Button>
+          <>
+            <Button
+              onClick={onScanOpen}
+              variant="outline"
+              className="flex-1 md:flex-initial shadow-sm border-indigo-200/70 text-indigo-700 hover:bg-indigo-500/10 hover:text-indigo-700 dark:border-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-500/10 transition-all"
+              title="Escanear una lista manuscrita con Gemini"
+            >
+              <ScanLine className="size-4 mr-2" /> Escanear Lista
+            </Button>
+            <Button
+              onClick={onAddOpen}
+              className="flex-1 md:flex-initial shadow-md shadow-indigo-600/10 hover:shadow-lg hover:shadow-indigo-600/20 transition-all"
+            >
+              <Plus className="size-4 mr-2" /> Registrar Damnificado
+            </Button>
+          </>
         )}
         <Button
           variant="outline"

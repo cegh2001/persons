@@ -11,6 +11,7 @@ import { CensoFilters } from "@/components/CensoFilters";
 import { CensoTable } from "@/components/CensoTable";
 import { PersonFormDialog } from "@/components/PersonFormDialog";
 import { DeletePersonDialog } from "@/components/DeletePersonDialog";
+import { ScanUpload } from "@/components/scan/ScanUpload";
 import { Login } from "@/components/Login";
 
 function AuthLoading() {
@@ -29,6 +30,7 @@ export function CensoDashboard() {
   const data = useCensoData(auth.user);
   const form = useCensoForm(auth.user, data.sectors, data.locationFilter, data.fetchData);
   const del = useCensoDelete(auth.user, data.fetchData);
+  const [scanOpen, setScanOpen] = React.useState(false);
 
   if (auth.authLoading) return <AuthLoading />;
   if (!auth.user) {
@@ -43,6 +45,7 @@ export function CensoDashboard() {
       <div className="max-w-[1400px] mx-auto relative space-y-6">
         <CensoHeader
           onAddOpen={form.openAdd}
+          onScanOpen={() => setScanOpen(true)}
           role={auth.user.role}
           onLogout={auth.handleLogout}
         />
@@ -104,6 +107,12 @@ export function CensoDashboard() {
         nameToDelete={del.nameToDelete}
         submitting={del.submitting}
         onSubmit={del.handleDelete}
+      />
+
+      <ScanUpload
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onCommitted={() => data.fetchData()}
       />
     </div>
   );
