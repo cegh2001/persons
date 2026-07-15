@@ -193,7 +193,7 @@ export function CensoStats({
       </div>
 
       {/* Sector cards with horizontal scroll */}
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 mt-4">
         <div className="flex items-center justify-between px-0.5">
           <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Filtro rápido por sector
