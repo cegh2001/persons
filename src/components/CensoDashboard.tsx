@@ -58,7 +58,7 @@ export function CensoDashboard() {
           onMedicalFilterChange={data.handleMedicalFilterChange}
         />
 
-        <section className="bg-card rounded-xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm overflow-hidden">
+        <section id="tabla-damnificados" className="scroll-mt-6 bg-card rounded-xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm overflow-hidden">
           <CensoFilters
             search={data.search}
             onSearchChange={data.handleSearchChange}

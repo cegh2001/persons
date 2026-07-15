@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Sparkles, Database, LogOut } from "lucide-react";
+import { Plus, Sparkles, Database, LogOut, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -45,6 +45,18 @@ export function CensoHeader({ onAddOpen, role, onLogout }: CensoHeaderProps) {
             <Plus className="size-4 mr-2" /> Registrar Damnificado
           </Button>
         )}
+        <Button
+          variant="outline"
+          onClick={() => {
+            const tableElement = document.getElementById("tabla-damnificados");
+            if (tableElement) {
+              tableElement.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }}
+          className="flex-1 md:flex-initial shadow-sm transition-all"
+        >
+          <Users className="size-4 mr-2" /> Ver Personas
+        </Button>
         <Button
           variant="outline"
           onClick={onLogout}
