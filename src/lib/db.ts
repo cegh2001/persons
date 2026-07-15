@@ -1,4 +1,4 @@
-import { createClient, type Client } from "@libsql/client";
+import { createClient, type Client, type InValue } from "@libsql/client";
 
 const dbUrl = process.env.persons_TURSO_DATABASE_URL || process.env.DATABASE_URL || "file:persons.db";
 const dbAuthToken = process.env.persons_TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN;
@@ -111,7 +111,7 @@ export interface PersonFilters {
 export async function listPersons(filters: PersonFilters = {}) {
   await getDb();
   const conditions: string[] = [];
-  const params: any[] = [];
+  const params: InValue[] = [];
 
   if (filters.location && filters.location !== "all") {
     conditions.push("location = ?");

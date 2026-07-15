@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPerson, updatePerson, deletePerson } from "@/lib/db";
+import { getPerson, updatePerson, deletePerson, type PersonInput } from "@/lib/db";
 import { getServerSession } from "@/lib/auth";
 import { updatePersonSchema, idParamSchema } from "@/lib/validation";
 import { checkRateLimit, getRateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
@@ -65,7 +65,7 @@ export async function PUT(
     const body = await req.json();
     const parsed = updatePersonSchema.parse(body);
 
-    const updateData: Record<string, unknown> = {};
+    const updateData: Partial<PersonInput> = {};
     if (parsed.name !== undefined) updateData.name = parsed.name;
     if (parsed.document_id !== undefined) updateData.document_id = parsed.document_id;
     if (parsed.location !== undefined) updateData.location = parsed.location;
@@ -74,7 +74,7 @@ export async function PUT(
     if (parsed.received_supplies !== undefined) updateData.received_supplies = parsed.received_supplies ? 1 : 0;
     if (parsed.received_medical !== undefined) updateData.received_medical = parsed.received_medical ? 1 : 0;
 
-    const person = await updatePerson(parsedId, updateData as any);
+    const person = await updatePerson(parsedId, updateData);
     if (!person) {
       return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
