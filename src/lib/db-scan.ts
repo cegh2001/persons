@@ -132,9 +132,11 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
             `Row with action "${row.action}" requires existingPersonId.`
           );
         }
-        // Re-read to get the current notes for the append behaviour.
+        // Re-read existing row — we need current notes (for append) AND
+        // current location (which we preserve; the extracted sector is
+        // recorded as context inside the notes instead of overwriting).
         const existingRes = await client.execute({
-          sql: "SELECT notes FROM persons WHERE id = ?",
+          sql: "SELECT notes, location FROM persons WHERE id = ?",
           args: [row.existingPersonId]
         });
         if (existingRes.rows.length === 0) {
@@ -143,12 +145,28 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
           );
         }
         const existingNotes = String(existingRes.rows[0].notes ?? "");
+        const existingLocation = String(existingRes.rows[0].location ?? "");
+
+        // If the extracted sector differs from the stored one, append it
+        // as context to the delivery note (e.g. "Entrega de suministros (San Julian)").
+        const extractedLocation = row.location.trim();
+        const locationSuffix =
+          extractedLocation && extractedLocation !== existingLocation
+            ? ` (${extractedLocation})`
+            : "";
+
+        const noteWithLocation = trimmedNotes
+          ? `${trimmedNotes}${locationSuffix}`
+          : locationSuffix
+            ? locationSuffix.slice(1) // drop leading space: "(San Julian)"
+            : "";
+
         const finalNotes =
-          trimmedNotes === ""
+          noteWithLocation === ""
             ? existingNotes
             : existingNotes === ""
-              ? trimmedNotes
-              : `${existingNotes} | ${trimmedNotes}`;
+              ? noteWithLocation
+              : `${existingNotes} | ${noteWithLocation}`;
 
         await client.execute({
           sql: "UPDATE persons SET raw_name = ?, name = ?, document_id = ?, location = ?, is_vulnerable = ?, notes = ?, received_supplies = ?, received_medical = ? WHERE id = ?",
@@ -156,7 +174,7 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
             rawName,
             row.name,
             docId,
-            row.location,
+            existingLocation,
             isVulnerable,
             finalNotes,
             receivedSupplies,

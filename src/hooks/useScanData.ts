@@ -35,6 +35,7 @@ export interface ScanRow {
   matchStatus: MatchStatus;
   existingPersonId: number | undefined;
   existingPersonName: string | undefined;
+  existingPersonLocation: string | undefined;
   action: ScanAction;
   name: string;
   document_id: string;
@@ -234,6 +235,7 @@ export function useScanData() {
         matchStatus: status,
         existingPersonId: existing?.id,
         existingPersonName: existing?.name,
+        existingPersonLocation: existing?.location,
         action:
           status === "exact"
             ? "update"

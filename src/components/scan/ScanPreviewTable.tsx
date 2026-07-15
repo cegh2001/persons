@@ -206,19 +206,37 @@ function MatchCell({ row, disabled, onSetMergeAction }: MatchCellProps) {
     <div className="flex flex-col gap-1.5">
       <MatchBadge status={row.matchStatus} />
 
-      {row.matchStatus === "exact" && row.existingPersonName && (
-        <span
-          className="text-[10px] text-muted-foreground line-clamp-1"
-          title={row.existingPersonName}
-        >
-          = {row.existingPersonName}
-        </span>
-      )}
+      {(row.matchStatus === "exact" || row.matchStatus === "partial") &&
+        row.existingPersonName && (
+          <div className="flex flex-col gap-0.5">
+            <span
+              className="text-[10px] text-muted-foreground line-clamp-1"
+              title={row.existingPersonName}
+            >
+              {row.matchStatus === "exact" ? "= " : "≈ "}
+              {row.existingPersonName}
+            </span>
+            {row.existingPersonLocation && (
+              <span className="text-[10px] text-muted-foreground/70 line-clamp-1">
+                Sector: {row.existingPersonLocation}
+              </span>
+            )}
+          </div>
+        )}
 
       {row.matchStatus === "exact" && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-          Se actualizará el registro existente
-        </span>
+        <div className="flex flex-col gap-0.5">
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+            Se actualizará el registro existente
+          </span>
+          {row.location.trim() &&
+            row.existingPersonLocation &&
+            row.location.trim() !== row.existingPersonLocation && (
+              <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                Sector se preserva. &ldquo;{row.location.trim()}&rdquo; va a las notas.
+              </span>
+            )}
+        </div>
       )}
 
       {row.matchStatus === "partial" && (
@@ -249,15 +267,6 @@ function PartialResolution({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      {row.existingPersonName && (
-        <span
-          className="text-[10px] text-muted-foreground line-clamp-1"
-          title={row.existingPersonName}
-        >
-          ≈ {row.existingPersonName}
-        </span>
-      )}
-
       <div
         className="inline-flex w-full rounded-md border border-slate-200 bg-muted/40 p-0.5 dark:border-slate-800"
         role="radiogroup"
@@ -292,6 +301,15 @@ function PartialResolution({
           ? "Actualiza el registro existente"
           : "Crea un nuevo registro"}
       </span>
+
+      {row.action === "merge" &&
+        row.location.trim() &&
+        row.existingPersonLocation &&
+        row.location.trim() !== row.existingPersonLocation && (
+          <span className="text-[10px] text-amber-600 dark:text-amber-400">
+            Sector se preserva. &ldquo;{row.location.trim()}&rdquo; va a las notas.
+          </span>
+        )}
     </div>
   );
 }
