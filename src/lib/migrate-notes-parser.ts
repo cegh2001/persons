@@ -105,6 +105,7 @@ const ITEM_PATTERNS: ReadonlyArray<[RegExp, SupplyItem]> = [
  */
 const SPECIALTY_MAP: ReadonlyMap<string, MedicalSpecialty> = new Map([
   ["medicina general", "medicina_general"],
+  ["cirugia general", "medicina_general"],
   ["endocrinologia", "endocrinologia"],
   ["endocrinologia/medicina interna", "endocrinologia"],
   ["fisioterapia", "fisioterapia"],

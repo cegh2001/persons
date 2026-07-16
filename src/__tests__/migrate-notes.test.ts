@@ -208,12 +208,12 @@ describe("parseAttentionLine", () => {
     expect(parseAttentionLine("Atención médica: ")).toBeNull();
   });
 
-  it("returns specialty=null for unknown specialties (catalog miss)", () => {
+  it("parses atención médica with Cirugía General → mapped to medicina_general", () => {
     const r = parseAttentionLine(
       "Atención médica: Dr. Juan Andrade (Cirugía General) | Edad: 79 años"
     );
     expect(r).not.toBeNull();
-    expect(r!.specialty).toBeNull();
+    expect(r!.specialty).toBe("medicina_general");
     expect(r!.professional).toBe("Dr. Juan Andrade");
   });
 
@@ -239,7 +239,7 @@ describe("mapSpecialty", () => {
   });
 
   it("returns null for unknown specialties", () => {
-    expect(mapSpecialty("Cirugía General")).toBeNull();
+    expect(mapSpecialty("Cirugía General")).toBe("medicina_general");
     expect(mapSpecialty("Curas")).toBeNull();
     expect(mapSpecialty("Medicamentos (Diclofenaco)")).toBeNull();
     expect(mapSpecialty("")).toBeNull();
