@@ -25,6 +25,20 @@ export function classifyScanError(err: unknown): ScanErrorInfo {
   const message = err instanceof Error ? err.message : String(err);
   const name = err instanceof Error ? err.name : "";
 
+  // Business-logic validation errors — surface to the user as 400.
+  if (
+    message.includes("requires existingPersonId") ||
+    message.includes("Existing person not found") ||
+    message.includes("validation") ||
+    message.includes("invalid")
+  ) {
+    return {
+      status: 400,
+      userMessage: message,
+      code: "VALIDATION",
+    };
+  }
+
   // DB connection / query failures (libsql / Turso / SQLite)
   if (
     name === "LibsqlError" ||
@@ -46,7 +60,8 @@ export function classifyScanError(err: unknown): ScanErrorInfo {
     };
   }
 
-  // Catch-all — still more useful than "Internal server error"
+  // Catch-all — log the real error server-side but don't leak to client
+  console.error("Unclassified scan error:", name, message);
   return {
     status: 500,
     userMessage: "Error interno. Si persiste, contactá al administrador.",
