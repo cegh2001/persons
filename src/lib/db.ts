@@ -18,6 +18,63 @@ export async function getDb(): Promise<Client> {
   return client;
 }
 
+// ── Structured Deliveries — new tables (PR 1, Foundation) ────────────
+// Added in `structured-deliveries` change. Backward-compatible: persons
+// columns are untouched. `CREATE TABLE IF NOT EXISTS` makes this safe for
+// both fresh deploys (initSchema) and existing DBs (migrateDb).
+const DELIVERIES_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS deliveries (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    person_id         INTEGER NOT NULL,
+    delivery_type     TEXT    NOT NULL CHECK (delivery_type IN ('individual', 'collective')),
+    beneficiary_count INTEGER NOT NULL DEFAULT 1,
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (person_id) REFERENCES persons(id)
+  )
+`;
+
+const DELIVERY_ITEMS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS delivery_items (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    delivery_id INTEGER NOT NULL,
+    item        TEXT    NOT NULL,
+    FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE
+  )
+`;
+
+const MEDICAL_ATTENTIONS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS medical_attentions (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    person_id    INTEGER NOT NULL,
+    professional TEXT    NOT NULL,
+    specialty    TEXT    NOT NULL,
+    patient_age  INTEGER,
+    patient_sex  TEXT,
+    diagnosis    TEXT,
+    created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (person_id) REFERENCES persons(id)
+  )
+`;
+
+const DELIVERY_INDEXES_SQL = [
+  "CREATE INDEX IF NOT EXISTS idx_deliveries_person_id ON deliveries(person_id)",
+  "CREATE INDEX IF NOT EXISTS idx_deliveries_type ON deliveries(delivery_type)",
+  "CREATE INDEX IF NOT EXISTS idx_delivery_items_delivery_id ON delivery_items(delivery_id)",
+  "CREATE INDEX IF NOT EXISTS idx_delivery_items_item ON delivery_items(item)",
+  "CREATE INDEX IF NOT EXISTS idx_medical_person_id ON medical_attentions(person_id)",
+  "CREATE INDEX IF NOT EXISTS idx_medical_specialty ON medical_attentions(specialty)",
+  "CREATE INDEX IF NOT EXISTS idx_medical_professional ON medical_attentions(professional)",
+];
+
+async function applyStructuredDeliveriesSchema() {
+  await client.execute(DELIVERIES_TABLE_SQL);
+  await client.execute(DELIVERY_ITEMS_TABLE_SQL);
+  await client.execute(MEDICAL_ATTENTIONS_TABLE_SQL);
+  for (const idxSql of DELIVERY_INDEXES_SQL) {
+    await client.execute(idxSql);
+  }
+}
+
 async function initSchema() {
   await client.execute(`
     CREATE TABLE IF NOT EXISTS persons (
@@ -43,6 +100,9 @@ async function initSchema() {
   try {
     await client.execute("CREATE INDEX IF NOT EXISTS idx_persons_received_medical ON persons(received_medical)");
   } catch (e) {}
+
+  // Structured Deliveries — new tables + indexes (idempotent on existing DBs).
+  await applyStructuredDeliveriesSchema();
 }
 
 export async function migrateDb() {
@@ -69,6 +129,10 @@ export async function migrateDb() {
       await client.execute("ALTER TABLE persons ADD COLUMN received_medical INTEGER NOT NULL DEFAULT 0");
       await client.execute("CREATE INDEX IF NOT EXISTS idx_persons_received_medical ON persons(received_medical)");
     }
+
+    // Structured Deliveries — create new tables + indexes. Persons columns
+    // are NEVER altered by this block (enforced by design constraint MS1/D2).
+    await applyStructuredDeliveriesSchema();
   } catch (err) {
     console.error("Migration failed:", err);
   }
