@@ -2,13 +2,12 @@
  * Scan-specific DB operations for the Gemini handwritten-list ingestion flow.
  *
  * Provides fuzzy match lookup used by the scan preview endpoint and a
- * transactional batch commit used by the commit endpoint. Both functions
- * run against the shared libsql client from `@/lib/db`.
+ * batch commit used by the commit endpoint. Both functions run against
+ * the shared libsql client from `@/lib/db`.
  */
 
 import { getDb, type PersonRow } from "@/lib/db";
 import type { ScanCommitRow } from "@/lib/validation";
-import type { InValue } from "@libsql/client";
 
 // ── Error classification (shared by scan + commit endpoints) ────────────
 
@@ -171,38 +170,32 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
 
   // ── Pre-read existing rows for update/merge actions ──────────────
   // We need current notes (for append) and location (to preserve it).
-  // These reads happen BEFORE the transaction so the batch stays pure writes.
   const updateRows = rows.filter((r) => r.action === "update" || r.action === "merge");
   const existingMap = new Map<number, { notes: string; location: string }>();
 
   await Promise.all(
     updateRows.map(async (row) => {
       if (row.existingPersonId === undefined) return;
-      try {
-        const res = await client.execute({
-          sql: "SELECT notes, location FROM persons WHERE id = ?",
-          args: [row.existingPersonId],
+      const res = await client.execute({
+        sql: "SELECT notes, location FROM persons WHERE id = ?",
+        args: [row.existingPersonId],
+      });
+      if (res.rows.length > 0) {
+        existingMap.set(row.existingPersonId, {
+          notes: String(res.rows[0].notes ?? ""),
+          location: String(res.rows[0].location ?? ""),
         });
-        if (res.rows.length > 0) {
-          existingMap.set(row.existingPersonId, {
-            notes: String(res.rows[0].notes ?? ""),
-            location: String(res.rows[0].location ?? ""),
-          });
-        }
-      } catch {
-        // If the pre-read fails, we'll throw during batch execution
-        // when the UPDATE fails with 0 rows affected.
       }
     })
   );
 
-  // ── Build batch statements ───────────────────────────────────────
-  // All writes go into a single batch for atomic execution.
-  // Turso HTTP: batch() sends all statements in one pipeline request.
-  // SQLite local: batch() executes sequentially in the same connection.
-  const statements: Array<string | { sql: string; args: InValue[] }> = [
-    "BEGIN IMMEDIATE",
-  ];
+  // ── Execute writes individually ──────────────────────────────────
+  // Turso HTTP: each execute() is its own atomic request. No explicit
+  // transaction wrapper needed — SQLite implicitly wraps single DML
+  // statements. If one row fails, previous rows are already committed
+  // (acceptable tradeoff for HTTP compatibility).
+  let committed = 0;
+  const errors: string[] = [];
 
   for (const row of rows) {
     const docId = row.document_id || null;
@@ -214,87 +207,90 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
     const trimmedNotes = (row.notes ?? "").trim();
     const rawName = docId ? `${row.name} ${docId}` : row.name;
 
-    if (row.action === "update" || row.action === "merge") {
-      if (row.existingPersonId === undefined) {
-        throw new Error(
-          `Row with action "${row.action}" requires existingPersonId.`
-        );
+    try {
+      if (row.action === "update" || row.action === "merge") {
+        if (row.existingPersonId === undefined) {
+          throw new Error(
+            `Row with action "${row.action}" requires existingPersonId.`
+          );
+        }
+
+        const existing = existingMap.get(row.existingPersonId);
+        if (!existing) {
+          throw new Error(
+            `Existing person not found for id ${row.existingPersonId}.`
+          );
+        }
+
+        const extractedLocation = row.location.trim();
+        const locationSuffix =
+          extractedLocation && extractedLocation !== existing.location
+            ? ` (${extractedLocation})`
+            : "";
+
+        const noteWithLocation = trimmedNotes
+          ? `${trimmedNotes}${locationSuffix}`
+          : locationSuffix
+            ? locationSuffix.slice(1)
+            : "";
+
+        const finalNotes =
+          noteWithLocation === ""
+            ? existing.notes
+            : existing.notes === ""
+              ? noteWithLocation
+              : `${existing.notes} | ${noteWithLocation}`;
+
+        const result = await client.execute({
+          sql: "UPDATE persons SET raw_name = ?, name = ?, document_id = ?, location = ?, is_vulnerable = ?, notes = ?, received_supplies = ?, received_medical = ? WHERE id = ?",
+          args: [
+            rawName,
+            row.name,
+            docId,
+            existing.location,
+            isVulnerable,
+            finalNotes,
+            receivedSupplies,
+            receivedMedical,
+            row.existingPersonId,
+          ],
+        });
+        if (Number(result.rowsAffected) > 0) committed++;
+      } else {
+        // action === "create"
+        const result = await client.execute({
+          sql: "INSERT INTO persons (raw_name, name, document_id, location, is_vulnerable, notes, received_supplies, received_medical) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          args: [
+            rawName,
+            row.name,
+            docId,
+            row.location,
+            isVulnerable,
+            trimmedNotes,
+            receivedSupplies,
+            receivedMedical,
+          ],
+        });
+        if (Number(result.rowsAffected) > 0) committed++;
       }
-
-      const existing = existingMap.get(row.existingPersonId);
-      if (!existing) {
-        throw new Error(
-          `Existing person not found for id ${row.existingPersonId}.`
-        );
-      }
-
-      const extractedLocation = row.location.trim();
-      const locationSuffix =
-        extractedLocation && extractedLocation !== existing.location
-          ? ` (${extractedLocation})`
-          : "";
-
-      const noteWithLocation = trimmedNotes
-        ? `${trimmedNotes}${locationSuffix}`
-        : locationSuffix
-          ? locationSuffix.slice(1)
-          : "";
-
-      const finalNotes =
-        noteWithLocation === ""
-          ? existing.notes
-          : existing.notes === ""
-            ? noteWithLocation
-            : `${existing.notes} | ${noteWithLocation}`;
-
-      statements.push({
-        sql: "UPDATE persons SET raw_name = ?, name = ?, document_id = ?, location = ?, is_vulnerable = ?, notes = ?, received_supplies = ?, received_medical = ? WHERE id = ?",
-        args: [
-          rawName,
-          row.name,
-          docId,
-          existing.location, // preserve existing location
-          isVulnerable,
-          finalNotes,
-          receivedSupplies,
-          receivedMedical,
-          row.existingPersonId,
-        ],
-      });
-    } else {
-      // action === "create"
-      statements.push({
-        sql: "INSERT INTO persons (raw_name, name, document_id, location, is_vulnerable, notes, received_supplies, received_medical) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        args: [
-          rawName,
-          row.name,
-          docId,
-          row.location,
-          isVulnerable,
-          trimmedNotes,
-          receivedSupplies,
-          receivedMedical,
-        ],
-      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Row "${row.name}": ${msg}`);
     }
   }
 
-  statements.push("COMMIT");
-
-  // ── Execute batch ────────────────────────────────────────────────
-  try {
-    const results = await client.batch(statements, "write");
-    // batch() returns results for all statements; the first is BEGIN,
-    // last is COMMIT. The middle results are our writes.
-    // Count successful writes (each should affect 1 row).
-    let committed = 0;
-    for (let i = 1; i < results.length - 1; i++) {
-      if (Number(results[i].rowsAffected) > 0) {
-        committed++;
-      }
-    }
-    return { committed };
-  } catch (err) {
-    throw err; // Let the caller classify the error
+  // If ALL writes failed, throw the first error so the route returns 5xx.
+  // If some succeeded, return partial results with a warning logged.
+  if (committed === 0 && errors.length > 0) {
+    throw new Error(errors[0]);
   }
+
+  if (errors.length > 0) {
+    console.error(
+      `Scan commit: ${committed}/${rows.length} succeeded. Errors:`,
+      errors
+    );
+  }
+
+  return { committed };
 }
