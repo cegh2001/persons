@@ -20,6 +20,36 @@ const MOCK_STATS: Stats = {
     { location: "Palmar Este", count: 190, vulnerableCount: 22 },
     { location: "San Julian", count: 234, vulnerableCount: 29 },
   ],
+  // Extended structured-deliveries fields
+  totalDeliveries: 487,
+  personsReached: 1240,
+  itemsDistributed: {
+    agua: 320,
+    kit_alimento: 280,
+    electrolit: 210,
+    kit_higiene: 190,
+    kit_aseo: 165,
+    medicamentos: 140,
+    ropa: 110,
+    pañales: 95,
+    toallas: 80,
+    protector_cama: 45,
+  },
+  totalMedicalAttentions: 432,
+  medicalBySpecialty: {
+    medicina_general: 180,
+    pediatria: 90,
+    traumatologia: 65,
+    psicologia: 40,
+    medicina_interna: 30,
+    fisioterapia: 15,
+    endocrinologia: 12,
+  },
+  medicalByProfessional: {
+    "Dra. Pérez": 80,
+    "Dr. Rodríguez": 60,
+    "Dra. Gómez": 45,
+  },
 };
 
 const MOCK_PERSONS: Person[] = [

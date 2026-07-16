@@ -1,5 +1,14 @@
 import React from "react";
-import { Plus, Sparkles, Database, LogOut, ScanLine, Users } from "lucide-react";
+import {
+  Plus,
+  Sparkles,
+  Database,
+  LogOut,
+  ScanLine,
+  Users,
+  Package,
+  Stethoscope,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -8,9 +17,19 @@ interface CensoHeaderProps {
   onScanOpen: () => void;
   role: "admin" | "visor";
   onLogout: () => void;
+  onNewDelivery?: () => void;
+  onNewAttention?: () => void;
 }
 
-export function CensoHeader({ onAddOpen, onScanOpen, role, onLogout }: CensoHeaderProps) {
+export function CensoHeader({
+  onAddOpen,
+  onScanOpen,
+  role,
+  onLogout,
+  onNewDelivery,
+  onNewAttention,
+}: CensoHeaderProps) {
+  const isAdmin = role === "admin";
   return (
     <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200/60 dark:border-slate-800/60 pb-6">
       <div className="space-y-1.5">
@@ -22,7 +41,7 @@ export function CensoHeader({ onAddOpen, onScanOpen, role, onLogout }: CensoHead
             <Database className="size-3 mr-1 inline" /> SQLite Activo
           </Badge>
           <Badge variant="outline" className={`text-xs capitalize font-semibold border ${
-            role === "admin" 
+            role === "admin"
               ? "bg-emerald-500/10 text-emerald-600 border-emerald-200/50 dark:text-emerald-400 dark:border-emerald-900/40"
               : "bg-amber-500/10 text-amber-600 border-amber-200/50 dark:text-amber-400 dark:border-amber-900/40"
           }`}>
@@ -37,9 +56,25 @@ export function CensoHeader({ onAddOpen, onScanOpen, role, onLogout }: CensoHead
         </p>
       </div>
 
-      <div className="flex items-center gap-2.5 w-full md:w-auto">
-        {role === "admin" && (
+      <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+        {isAdmin && (
           <>
+            <Button
+              onClick={onNewDelivery}
+              variant="outline"
+              className="flex-1 md:flex-initial shadow-sm border-indigo-200/70 text-indigo-700 hover:bg-indigo-500/10 hover:text-indigo-700 dark:border-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-500/10 transition-all"
+              title="Registrar una entrega rápida"
+            >
+              <Package className="size-4 mr-2" /> Nueva entrega
+            </Button>
+            <Button
+              onClick={onNewAttention}
+              variant="outline"
+              className="flex-1 md:flex-initial shadow-sm border-rose-200/70 text-rose-700 hover:bg-rose-500/10 hover:text-rose-700 dark:border-rose-900/50 dark:text-rose-300 dark:hover:bg-rose-500/10 transition-all"
+              title="Registrar una atención médica rápida"
+            >
+              <Stethoscope className="size-4 mr-2" /> Nueva atención
+            </Button>
             <Button
               onClick={onScanOpen}
               variant="outline"

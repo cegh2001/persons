@@ -38,6 +38,7 @@ interface CensoTableProps {
   onEditOpen: (person: Person) => void;
   onDeleteOpen: (person: Person) => void;
   role: "admin" | "visor";
+  onRowClick?: (person: Person) => void;
 }
 
 export function CensoTable({
@@ -52,9 +53,11 @@ export function CensoTable({
   onToggleMedical,
   onEditOpen,
   onDeleteOpen,
-  role
+  role,
+  onRowClick,
 }: CensoTableProps) {
   const isAdmin = role === "admin";
+  const isClickable = !!onRowClick;
 
   return (
     <>
@@ -159,7 +162,12 @@ export function CensoTable({
             </TableHeader>
             <TableBody>
               {persons.map((person) => (
-                <TableRow key={person.id} className="group/row">
+                <TableRow
+                  key={person.id}
+                  className={`group/row ${isClickable ? "cursor-pointer hover:bg-slate-50/60 dark:hover:bg-slate-900/30" : ""}`}
+                  onClick={isClickable ? () => onRowClick!(person) : undefined}
+                  title={isClickable ? "Hacé click para ver el detalle" : undefined}
+                >
                   <TableCell className="font-semibold text-slate-900 dark:text-slate-100">
                     {person.name}
                   </TableCell>
@@ -173,14 +181,14 @@ export function CensoTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className={`text-xs border ${getLocationColor(person.location)}`}
                     >
                       {person.location}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     {person.is_vulnerable === 1 ? (
                       isAdmin ? (
                         <button
@@ -213,7 +221,7 @@ export function CensoTable({
                       )
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
                       {isAdmin ? (
                         <button
@@ -275,20 +283,20 @@ export function CensoTable({
                     </div>
                   </TableCell>
                   {isAdmin && (
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover/row:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon-xs" 
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           onClick={() => onEditOpen(person)}
                           className="text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
                           title="Editar damnificado"
                         >
                           <Edit2 className="size-3.5" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon-xs" 
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           onClick={() => onDeleteOpen(person)}
                           className="text-destructive/80 hover:text-destructive hover:bg-destructive/10"
                           title="Eliminar damnificado"

@@ -11,8 +11,12 @@ import { CensoFilters } from "@/components/CensoFilters";
 import { CensoTable } from "@/components/CensoTable";
 import { PersonFormDialog } from "@/components/PersonFormDialog";
 import { DeletePersonDialog } from "@/components/DeletePersonDialog";
+import { PersonDetailSheet } from "@/components/PersonDetailSheet";
+import { QuickDeliveryDialog } from "@/components/QuickDeliveryDialog";
+import { QuickMedicalDialog } from "@/components/QuickMedicalDialog";
 import { ScanUpload } from "@/components/scan/ScanUpload";
 import { Login } from "@/components/Login";
+import type { Person } from "@/types/person";
 
 function AuthLoading() {
   return (
@@ -32,10 +36,54 @@ export function CensoDashboard() {
   const del = useCensoDelete(auth.user, data.fetchData);
   const [scanOpen, setScanOpen] = React.useState(false);
 
+  // Delivery UI state
+  const [selectedPerson, setSelectedPerson] = React.useState<Person | null>(null);
+  const [deliveryOpen, setDeliveryOpen] = React.useState(false);
+  const [medicalOpen, setMedicalOpen] = React.useState(false);
+  const [prefillPersonId, setPrefillPersonId] = React.useState<number | undefined>(undefined);
+
   if (auth.authLoading) return <AuthLoading />;
   if (!auth.user) {
     return <Login onLoginSuccess={auth.handleLoginSuccess} />;
   }
+
+  const role = auth.user.role;
+  const isAdmin = role === "admin";
+
+  const handleRowClick = (person: Person) => {
+    setSelectedPerson(person);
+  };
+
+  const handleCloseSheet = () => {
+    setSelectedPerson(null);
+  };
+
+  const handleNewDeliveryFromSheet = (personId: number) => {
+    setPrefillPersonId(personId);
+    setDeliveryOpen(true);
+  };
+
+  const handleNewAttentionFromSheet = (personId: number) => {
+    setPrefillPersonId(personId);
+    setMedicalOpen(true);
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setDeliveryOpen(open);
+    if (!open) {
+      setPrefillPersonId(undefined);
+      // Refresh stats after a successful create (toast already in hook).
+      data.fetchData();
+    }
+  };
+
+  const handleMedicalDialogChange = (open: boolean) => {
+    setMedicalOpen(open);
+    if (!open) {
+      setPrefillPersonId(undefined);
+      data.fetchData();
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8">
@@ -46,8 +94,16 @@ export function CensoDashboard() {
         <CensoHeader
           onAddOpen={form.openAdd}
           onScanOpen={() => setScanOpen(true)}
-          role={auth.user.role}
+          role={role}
           onLogout={auth.handleLogout}
+          onNewDelivery={isAdmin ? () => {
+            setPrefillPersonId(undefined);
+            setDeliveryOpen(true);
+          } : undefined}
+          onNewAttention={isAdmin ? () => {
+            setPrefillPersonId(undefined);
+            setMedicalOpen(true);
+          } : undefined}
         />
 
         <CensoStats
@@ -84,7 +140,8 @@ export function CensoDashboard() {
             onToggleMedical={data.handleToggleMedical}
             onEditOpen={form.openEdit}
             onDeleteOpen={del.openDelete}
-            role={auth.user.role}
+            role={role}
+            onRowClick={handleRowClick}
           />
         </section>
       </div>
@@ -114,6 +171,34 @@ export function CensoDashboard() {
         onOpenChange={setScanOpen}
         onCommitted={() => data.fetchData()}
       />
+
+      <PersonDetailSheet
+        person={selectedPerson}
+        isOpen={selectedPerson !== null}
+        onClose={handleCloseSheet}
+        role={role}
+        onNewDelivery={handleNewDeliveryFromSheet}
+        onNewAttention={handleNewAttentionFromSheet}
+      />
+
+      {isAdmin && (
+        <>
+          <QuickDeliveryDialog
+            open={deliveryOpen}
+            onOpenChange={handleDialogChange}
+            prefillPersonId={prefillPersonId}
+            persons={data.persons}
+            onSuccess={() => data.fetchData()}
+          />
+          <QuickMedicalDialog
+            open={medicalOpen}
+            onOpenChange={handleMedicalDialogChange}
+            prefillPersonId={prefillPersonId}
+            persons={data.persons}
+            onSuccess={() => data.fetchData()}
+          />
+        </>
+      )}
     </div>
   );
 }
