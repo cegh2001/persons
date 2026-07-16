@@ -96,6 +96,10 @@ const ITEM_PATTERNS: ReadonlyArray<[RegExp, SupplyItem]> = [
   // contain that distinction.
   [/\btoalla(?:s|ita)?\b|\bgel\b/i, "toallas"],
   [/\bropa\b|\btalla\b/i, "ropa"],
+  [/\bcolch[oó]n(?:eta)?\b|\bcolchoneta\b/i, "colchoneta"],
+  [/\bcarpa(?:s)?\b/i, "carpas"],
+  [/\bsilla\s+de\s+ruedas?\b/i, "silla_ruedas"],
+  [/\bmuleta(?:s)?\b/i, "muletas"],
 ];
 
 /**

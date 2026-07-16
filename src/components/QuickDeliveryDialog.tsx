@@ -45,6 +45,10 @@ const SUPPLY_LABELS: Record<SupplyItem, string> = {
   ropa: "Ropa",
   protector_cama: "Protector de cama",
   toallas: "Toallas",
+  colchoneta: "Colchoneta",
+  carpas: "Carpas",
+  silla_ruedas: "Silla de ruedas",
+  muletas: "Muletas",
   otros: "Otros",
 };
 

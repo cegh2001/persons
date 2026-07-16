@@ -37,6 +37,10 @@ export const SUPPLY_ITEMS = [
   "ropa",
   "protector_cama",
   "toallas",
+  "colchoneta",
+  "carpas",
+  "silla_ruedas",
+  "muletas",
   "otros",
 ] as const;
 export const supplyItemSchema = z.enum(SUPPLY_ITEMS);

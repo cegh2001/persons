@@ -53,6 +53,10 @@ describe("SUPPLY_ITEMS catalog", () => {
       "ropa",
       "protector_cama",
       "toallas",
+      "colchoneta",
+      "carpas",
+      "silla_ruedas",
+      "muletas",
       "otros",
     ]);
   });
@@ -68,6 +72,10 @@ describe("SUPPLY_ITEMS catalog", () => {
     "ropa",
     "protector_cama",
     "toallas",
+    "colchoneta",
+    "carpas",
+    "silla_ruedas",
+    "muletas",
     "otros",
   ] as const)("supplyItemSchema accepts '%s'", (item) => {
     const result = supplyItemSchema.safeParse(item);

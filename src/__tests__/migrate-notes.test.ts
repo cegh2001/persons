@@ -140,7 +140,7 @@ describe("parseDeliveryLine", () => {
   });
 
   it("returns null when no catalog items are recognized", () => {
-    const r = parseDeliveryLine("Entrega de suministros: 1 silla de ruedas");
+    const r = parseDeliveryLine("Entrega de suministros: 1 par de zapatos azules");
     expect(r).toBeNull();
   });
 
@@ -275,7 +275,7 @@ describe("parseNotes", () => {
   });
 
   it("flags Entrega lines with no catalog items as failures", () => {
-    const r = parseNotes("Entrega de suministros: 1 silla de ruedas");
+    const r = parseNotes("Entrega de suministros: 1 par de zapatos azules");
     expect(r.deliveries).toEqual([]);
     expect(r.failures).toHaveLength(1);
     expect(r.failures[0].reason).toBe("no_catalog_items");
