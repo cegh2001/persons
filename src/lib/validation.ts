@@ -17,6 +17,43 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+// ── Structured Deliveries — Catalogs (PR 1, Foundation) ──────────────
+// Source of truth for the fixed enumerations used by deliveries,
+// delivery_items, and medical_attentions. The const arrays are exported
+// so UI dropdowns can read the same values the API validates against.
+
+export const DELIVERY_TYPES = ["individual", "collective"] as const;
+export const deliveryTypeSchema = z.enum(DELIVERY_TYPES);
+export type DeliveryType = z.infer<typeof deliveryTypeSchema>;
+
+export const SUPPLY_ITEMS = [
+  "agua",
+  "electrolit",
+  "kit_aseo",
+  "kit_alimento",
+  "pañales",
+  "kit_higiene",
+  "medicamentos",
+  "ropa",
+  "protector_cama",
+  "toallas",
+  "otros",
+] as const;
+export const supplyItemSchema = z.enum(SUPPLY_ITEMS);
+export type SupplyItem = z.infer<typeof supplyItemSchema>;
+
+export const MEDICAL_SPECIALTIES = [
+  "traumatologia",
+  "fisioterapia",
+  "medicina_interna",
+  "medicina_general",
+  "pediatria",
+  "psicologia",
+  "endocrinologia",
+] as const;
+export const medicalSpecialtySchema = z.enum(MEDICAL_SPECIALTIES);
+export type MedicalSpecialty = z.infer<typeof medicalSpecialtySchema>;
+
 // ── Persons ───────────────────────────────────────────────────────────
 
 export const createPersonSchema = z.object({
