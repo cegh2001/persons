@@ -80,7 +80,12 @@ const MAX_RECORDS = 50;
 const SYSTEM_PROMPT = [
   "Extraé los datos de cada persona de esta lista manuscrita de entregas de ayuda humanitaria.",
   "Por cada persona, devolvé: nombre completo, número de documento/CI, ubicación/sector,",
-  'tipo de entrega ("supplies" para suministros o "medical" para atención médica), y notas adicionales.',
+  'tipo de entrega ("supplies" para suministros o "medical" para atención médica), y notas.',
+  "",
+  "CAMPO NOTAS:",
+  "- Si es atención médica: incluí la especialidad y el motivo de consulta (ej: 'Fisioterapia: Debilidad muscular', 'Medicina general: Control de presión').",
+  "- Si son suministros: describí qué se entregó (ej: 'Kit de alimentos', 'Medicamentos').",
+  "- Si no hay información adicional, dejalo vacío.",
   "",
   "REGLAS IMPORTANTES:",
   "- Cédulas: SOLO dígitos consecutivos, SIN puntos, SIN comas, SIN espacios. Ej: 12345678, no 12.345.678.",
@@ -122,7 +127,7 @@ const responseSchema: Schema = {
       },
       notes: {
         type: Type.STRING,
-        description: "Notas adicionales. Vacío si no hay.",
+        description: "Notas: especialidad médica y motivo (ej: 'Fisioterapia: Dolor lumbar'), o suministros entregados (ej: 'Kit de alimentos'). Vacío si no hay.",
       },
     },
     required: ["name", "document_id", "location", "type", "notes"],

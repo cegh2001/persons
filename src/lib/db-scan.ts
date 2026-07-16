@@ -8,6 +8,7 @@
 
 import { getDb, type PersonRow } from "@/lib/db";
 import type { ScanCommitRow } from "@/lib/validation";
+import type { InValue } from "@libsql/client";
 
 // ── Error classification (shared by scan + commit endpoints) ────────────
 
@@ -167,108 +168,133 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
   }
 
   const client = await getDb();
-  let committed = 0;
 
-  try {
-    await client.execute("BEGIN IMMEDIATE");
+  // ── Pre-read existing rows for update/merge actions ──────────────
+  // We need current notes (for append) and location (to preserve it).
+  // These reads happen BEFORE the transaction so the batch stays pure writes.
+  const updateRows = rows.filter((r) => r.action === "update" || r.action === "merge");
+  const existingMap = new Map<number, { notes: string; location: string }>();
 
-    for (const row of rows) {
-      const docId = row.document_id || null;
-      const isVulnerable = row.is_vulnerable ? 1 : 0;
-      // If flags are explicitly set, use them. Otherwise fall back to `type`
-      // so the Zod-validated `type` field is never dead — it drives the DB
-      // flags when the client doesn't send the booleans directly.
-      const receivedSupplies =
-        (row.received_supplies || row.type === "supplies" || row.type === "both") ? 1 : 0;
-      const receivedMedical =
-        (row.received_medical || row.type === "medical" || row.type === "both") ? 1 : 0;
-      const trimmedNotes = (row.notes ?? "").trim();
-      const rawName = docId ? `${row.name} ${docId}` : row.name;
-
-      if (row.action === "update" || row.action === "merge") {
-        if (row.existingPersonId === undefined) {
-          throw new Error(
-            `Row with action "${row.action}" requires existingPersonId.`
-          );
-        }
-        // Re-read existing row — we need current notes (for append) AND
-        // current location (which we preserve; the extracted sector is
-        // recorded as context inside the notes instead of overwriting).
-        const existingRes = await client.execute({
+  await Promise.all(
+    updateRows.map(async (row) => {
+      if (row.existingPersonId === undefined) return;
+      try {
+        const res = await client.execute({
           sql: "SELECT notes, location FROM persons WHERE id = ?",
-          args: [row.existingPersonId]
+          args: [row.existingPersonId],
         });
-        if (existingRes.rows.length === 0) {
-          throw new Error(
-            `Existing person not found for id ${row.existingPersonId}.`
-          );
+        if (res.rows.length > 0) {
+          existingMap.set(row.existingPersonId, {
+            notes: String(res.rows[0].notes ?? ""),
+            location: String(res.rows[0].location ?? ""),
+          });
         }
-        const existingNotes = String(existingRes.rows[0].notes ?? "");
-        const existingLocation = String(existingRes.rows[0].location ?? "");
-
-        // If the extracted sector differs from the stored one, append it
-        // as context to the delivery note (e.g. "Entrega de suministros (San Julian)").
-        const extractedLocation = row.location.trim();
-        const locationSuffix =
-          extractedLocation && extractedLocation !== existingLocation
-            ? ` (${extractedLocation})`
-            : "";
-
-        const noteWithLocation = trimmedNotes
-          ? `${trimmedNotes}${locationSuffix}`
-          : locationSuffix
-            ? locationSuffix.slice(1) // drop leading space: "(San Julian)"
-            : "";
-
-        const finalNotes =
-          noteWithLocation === ""
-            ? existingNotes
-            : existingNotes === ""
-              ? noteWithLocation
-              : `${existingNotes} | ${noteWithLocation}`;
-
-        await client.execute({
-          sql: "UPDATE persons SET raw_name = ?, name = ?, document_id = ?, location = ?, is_vulnerable = ?, notes = ?, received_supplies = ?, received_medical = ? WHERE id = ?",
-          args: [
-            rawName,
-            row.name,
-            docId,
-            existingLocation,
-            isVulnerable,
-            finalNotes,
-            receivedSupplies,
-            receivedMedical,
-            row.existingPersonId
-          ]
-        });
-      } else {
-        // action === "create"
-        await client.execute({
-          sql: "INSERT INTO persons (raw_name, name, document_id, location, is_vulnerable, notes, received_supplies, received_medical) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-          args: [
-            rawName,
-            row.name,
-            docId,
-            row.location,
-            isVulnerable,
-            trimmedNotes,
-            receivedSupplies,
-            receivedMedical
-          ]
-        });
+      } catch {
+        // If the pre-read fails, we'll throw during batch execution
+        // when the UPDATE fails with 0 rows affected.
       }
-      committed += 1;
-    }
+    })
+  );
 
-    await client.execute("COMMIT");
+  // ── Build batch statements ───────────────────────────────────────
+  // All writes go into a single batch for atomic execution.
+  // Turso HTTP: batch() sends all statements in one pipeline request.
+  // SQLite local: batch() executes sequentially in the same connection.
+  const statements: Array<string | { sql: string; args: InValue[] }> = [
+    "BEGIN IMMEDIATE",
+  ];
+
+  for (const row of rows) {
+    const docId = row.document_id || null;
+    const isVulnerable = row.is_vulnerable ? 1 : 0;
+    const receivedSupplies =
+      (row.received_supplies || row.type === "supplies" || row.type === "both") ? 1 : 0;
+    const receivedMedical =
+      (row.received_medical || row.type === "medical" || row.type === "both") ? 1 : 0;
+    const trimmedNotes = (row.notes ?? "").trim();
+    const rawName = docId ? `${row.name} ${docId}` : row.name;
+
+    if (row.action === "update" || row.action === "merge") {
+      if (row.existingPersonId === undefined) {
+        throw new Error(
+          `Row with action "${row.action}" requires existingPersonId.`
+        );
+      }
+
+      const existing = existingMap.get(row.existingPersonId);
+      if (!existing) {
+        throw new Error(
+          `Existing person not found for id ${row.existingPersonId}.`
+        );
+      }
+
+      const extractedLocation = row.location.trim();
+      const locationSuffix =
+        extractedLocation && extractedLocation !== existing.location
+          ? ` (${extractedLocation})`
+          : "";
+
+      const noteWithLocation = trimmedNotes
+        ? `${trimmedNotes}${locationSuffix}`
+        : locationSuffix
+          ? locationSuffix.slice(1)
+          : "";
+
+      const finalNotes =
+        noteWithLocation === ""
+          ? existing.notes
+          : existing.notes === ""
+            ? noteWithLocation
+            : `${existing.notes} | ${noteWithLocation}`;
+
+      statements.push({
+        sql: "UPDATE persons SET raw_name = ?, name = ?, document_id = ?, location = ?, is_vulnerable = ?, notes = ?, received_supplies = ?, received_medical = ? WHERE id = ?",
+        args: [
+          rawName,
+          row.name,
+          docId,
+          existing.location, // preserve existing location
+          isVulnerable,
+          finalNotes,
+          receivedSupplies,
+          receivedMedical,
+          row.existingPersonId,
+        ],
+      });
+    } else {
+      // action === "create"
+      statements.push({
+        sql: "INSERT INTO persons (raw_name, name, document_id, location, is_vulnerable, notes, received_supplies, received_medical) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        args: [
+          rawName,
+          row.name,
+          docId,
+          row.location,
+          isVulnerable,
+          trimmedNotes,
+          receivedSupplies,
+          receivedMedical,
+        ],
+      });
+    }
+  }
+
+  statements.push("COMMIT");
+
+  // ── Execute batch ────────────────────────────────────────────────
+  try {
+    const results = await client.batch(statements, "write");
+    // batch() returns results for all statements; the first is BEGIN,
+    // last is COMMIT. The middle results are our writes.
+    // Count successful writes (each should affect 1 row).
+    let committed = 0;
+    for (let i = 1; i < results.length - 1; i++) {
+      if (Number(results[i].rowsAffected) > 0) {
+        committed++;
+      }
+    }
     return { committed };
   } catch (err) {
-    try {
-      await client.execute("ROLLBACK");
-    } catch (rollbackErr) {
-      // Log the rollback failure but propagate the original error.
-      console.error("Rollback failed after commit error:", rollbackErr);
-    }
-    throw err;
+    throw err; // Let the caller classify the error
   }
 }

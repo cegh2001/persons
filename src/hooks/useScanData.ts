@@ -315,7 +315,7 @@ export function useScanData() {
               : "create",
         name: rec.name ?? "",
         document_id: rec.document_id ?? "",
-        location: rec.location ?? "",
+        location: rec.location?.trim() || "Desconocido",
         received_supplies: rec.type === "supplies",
         received_medical: rec.type === "medical",
         notes: rec.notes ?? "",
@@ -530,6 +530,9 @@ async function mapScanError(res: Response): Promise<string> {
 
 async function mapCommitError(res: Response): Promise<string> {
   const body = await safeJson(res);
+  const serverError = typeof body?.error === "string" && body.error.trim()
+    ? body.error
+    : null;
   switch (res.status) {
     case 401:
       return "No autorizado. Iniciá sesión.";
@@ -537,14 +540,12 @@ async function mapCommitError(res: Response): Promise<string> {
       return "Acceso denegado. Permisos de administrador requeridos.";
     case 429:
       return "Demasiadas solicitudes. Esperá un momento.";
-    case 400: {
-      const msg = body?.error;
-      return typeof msg === "string" && msg.trim()
-        ? msg
-        : "Error de validación. Revisá los datos ingresados.";
-    }
+    case 400:
+      return serverError ?? "Error de validación. Revisá los datos ingresados.";
     default:
-      return "Error al guardar. Ningún registro fue modificado.";
+      // Surface the real server error so the user knows what went wrong
+      // instead of a misleading generic message.
+      return serverError ?? `Error del servidor (HTTP ${res.status}). Reintentá en unos segundos.`;
   }
 }
 
