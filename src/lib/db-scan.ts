@@ -169,21 +169,27 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
   const client = await getDb();
 
   // ── Pre-read existing rows for update/merge actions ──────────────
-  // We need current notes (for append) and location (to preserve it).
+  // We need current notes (for append), location (to preserve), and
+  // delivery flags (to OR-merge — never downgrade an existing flag).
   const updateRows = rows.filter((r) => r.action === "update" || r.action === "merge");
-  const existingMap = new Map<number, { notes: string; location: string }>();
+  const existingMap = new Map<
+    number,
+    { notes: string; location: string; received_supplies: number; received_medical: number }
+  >();
 
   await Promise.all(
     updateRows.map(async (row) => {
       if (row.existingPersonId === undefined) return;
       const res = await client.execute({
-        sql: "SELECT notes, location FROM persons WHERE id = ?",
+        sql: "SELECT notes, location, received_supplies, received_medical FROM persons WHERE id = ?",
         args: [row.existingPersonId],
       });
       if (res.rows.length > 0) {
         existingMap.set(row.existingPersonId, {
           notes: String(res.rows[0].notes ?? ""),
           location: String(res.rows[0].location ?? ""),
+          received_supplies: Number(res.rows[0].received_supplies ?? 0),
+          received_medical: Number(res.rows[0].received_medical ?? 0),
         });
       }
     })
@@ -200,12 +206,14 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
   for (const row of rows) {
     const docId = row.document_id || null;
     const isVulnerable = row.is_vulnerable ? 1 : 0;
-    const receivedSupplies =
-      (row.received_supplies || row.type === "supplies" || row.type === "both") ? 1 : 0;
-    const receivedMedical =
-      (row.received_medical || row.type === "medical" || row.type === "both") ? 1 : 0;
     const trimmedNotes = (row.notes ?? "").trim();
     const rawName = docId ? `${row.name} ${docId}` : row.name;
+
+    // Compute delivery flags from the current scan row.
+    let receivedSupplies =
+      (row.received_supplies || row.type === "supplies" || row.type === "both") ? 1 : 0;
+    let receivedMedical =
+      (row.received_medical || row.type === "medical" || row.type === "both") ? 1 : 0;
 
     try {
       if (row.action === "update" || row.action === "merge") {
@@ -221,6 +229,12 @@ export async function commitScanBatch(rows: ScanCommitRow[]): Promise<CommitResu
             `Existing person not found for id ${row.existingPersonId}.`
           );
         }
+
+        // OR-merge delivery flags: never downgrade an existing flag.
+        // If the person already had supplies, they keep them even if this
+        // scan only recorded medical attention (and vice versa).
+        receivedSupplies = receivedSupplies || existing.received_supplies;
+        receivedMedical = receivedMedical || existing.received_medical;
 
         const extractedLocation = row.location.trim();
         const locationSuffix =
