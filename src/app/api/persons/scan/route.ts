@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       if (err instanceof GeminiExtractionError) {
         console.error("Gemini extraction error:", err.message);
         return NextResponse.json(
-          { error: err.userMessage, code: err.code },
+          { error: err.userMessage, code: err.code, detail: err.detail },
           { status: err.status }
         );
       }
@@ -143,7 +143,10 @@ export async function POST(req: NextRequest) {
     // everything else: DB failures, timeouts, unexpected runtime errors.
     if (err instanceof GeminiExtractionError) {
       console.error("Gemini extraction error (outer):", err.message);
-      return NextResponse.json({ error: err.userMessage, code: err.code }, { status: err.status });
+      return NextResponse.json(
+        { error: err.userMessage, code: err.code, detail: err.detail },
+        { status: err.status }
+      );
     }
 
     const info = classifyScanError(err);

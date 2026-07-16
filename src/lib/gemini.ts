@@ -31,13 +31,22 @@ export class GeminiExtractionError extends Error {
   public readonly code: GeminiErrorCode;
   public readonly status: number;
   public readonly userMessage: string;
+  /** Safe technical detail for client-side debugging. Never contains secrets. */
+  public readonly detail: string;
 
-  constructor(code: GeminiErrorCode, message: string, userMessage: string, status = 500) {
+  constructor(
+    code: GeminiErrorCode,
+    message: string,
+    userMessage: string,
+    status = 500,
+    detail?: string
+  ) {
     super(message);
     this.name = "GeminiExtractionError";
     this.code = code;
     this.status = status;
     this.userMessage = userMessage;
+    this.detail = detail ?? message;
   }
 }
 
@@ -287,24 +296,66 @@ export async function extractFromImage(
     return [];
   }
 
+  // ── Resilient JSON parsing ─────────────────────────────────────
+  // gemma models sometimes ignore responseJsonSchema and return:
+  //   - JSON wrapped in ```json fences
+  //   - JSON prefixed with explanatory text
+  //   - Plain text (which we can't recover from)
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new GeminiExtractionError(
-      "unknown",
-      "Gemini returned non-JSON response",
-      "Error al procesar la imagen. Intentá de nuevo.",
-      500
-    );
+    // Attempt 2: extract from ```json … ``` code block
+    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      try {
+        parsed = JSON.parse(fenceMatch[1].trim());
+      } catch {
+        // fall through to error below
+      }
+    }
+
+    // Attempt 3: find the outermost JSON array
+    if (parsed === undefined) {
+      const arrayStart = text.indexOf("[");
+      const arrayEnd = text.lastIndexOf("]");
+      if (arrayStart !== -1 && arrayEnd > arrayStart) {
+        try {
+          parsed = JSON.parse(text.slice(arrayStart, arrayEnd + 1));
+        } catch {
+          // fall through to error below
+        }
+      }
+    }
+
+    // If all extraction attempts fail, surface the raw response in the log
+    // and return a diagnostic error to the client.
+    if (parsed === undefined) {
+      console.error(
+        "Gemini non-JSON response (first 500 chars):",
+        text.slice(0, 500)
+      );
+      throw new GeminiExtractionError(
+        "unknown",
+        `Gemini returned non-JSON response (${text.length} chars)`,
+        "El modelo no devolvió datos estructurados. Probá con una foto más clara o recortá solo la lista.",
+        422,
+        `Non-JSON response. First 100 chars: "${text.slice(0, 100).replace(/\n/g, ' ')}"`
+      );
+    }
   }
 
   if (!Array.isArray(parsed)) {
+    console.error(
+      "Gemini non-array response (first 500 chars):",
+      JSON.stringify(parsed).slice(0, 500)
+    );
     throw new GeminiExtractionError(
       "unknown",
       "Gemini response was not an array",
-      "Error al procesar la imagen. Intentá de nuevo.",
-      500
+      "El modelo no devolvió una lista de personas. Probá con una foto más clara.",
+      422,
+      `Response type: ${typeof parsed}. Expected array.`
     );
   }
 
