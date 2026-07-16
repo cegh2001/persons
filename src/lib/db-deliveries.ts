@@ -339,11 +339,12 @@ export async function personsMissingItem(item: string): Promise<number[]> {
  * created AND the collective's beneficiary_count is decremented, or
  * nothing changes. The flow is:
  *
- *   BEGIN IMMEDIATE  ── acquires the SQLite write lock up front so the
- *                       collective's count cannot be raced.
+ *   db.transaction("write")  ── opens a write transaction (BEGIN
+ *                                 IMMEDIATE under the hood for the
+ *                                 local SQLite driver).
  *     │
  *     ▼
- *   SELECT collective (under the lock)
+ *   SELECT collective (under the write lock)
  *     │
  *     ▼
  *   For each personId, INSERT a new individual delivery and capture
@@ -351,19 +352,25 @@ export async function personsMissingItem(item: string): Promise<number[]> {
  *   items into the new rows.
  *     │
  *     ▼
- *   batch([ INSERT delivery_items rows using the captured ids,
- *           UPDATE collective beneficiary_count
- *           (or DELETE if exhausted) ])
+ *   tx.batch([ INSERT delivery_items rows using the captured ids,
+ *              UPDATE collective beneficiary_count
+ *              (or DELETE if exhausted) ])
  *     │
  *     ▼
  *   verify: SELECT the new individual rows and the collective's new
  *           count. If either is wrong, ROLLBACK and throw.
  *     │
  *     ▼
- *   COMMIT
+ *   tx.commit()
+ *
+ * The libsql `transaction()` API is used (not raw `BEGIN`/`COMMIT`)
+ * because `client.batch(..., "write")` on a connection that already
+ * has a transaction throws "cannot start a transaction within a
+ * transaction". By going through the transaction object, `tx.batch()`
+ * runs inside the existing transaction.
  *
  * On any thrown error (validation, FK failure, batch error) we issue
- * a best-effort ROLLBACK before re-throwing so the client never sees
+ * a best-effort rollback before re-throwing so the client never sees
  * a half-applied split.
  *
  * @throws DeliveryValidationError when the input is invalid
@@ -382,12 +389,13 @@ export async function splitCollectiveDelivery(
 
   const db = await getDb();
 
-  // ── BEGIN IMMEDIATE — write lock ────────────────────────────────────
-  await db.execute("BEGIN IMMEDIATE");
+  // Use the libsql `transaction()` API so that subsequent `tx.batch()`
+  // calls run inside this transaction instead of starting a new one.
+  const tx = await db.transaction("write");
 
   try {
     // Read the collective under the lock so we know its real count.
-    const lookupRes = await db.execute({
+    const lookupRes = await tx.execute({
       sql: "SELECT * FROM deliveries WHERE id = ?",
       args: [deliveryId],
     });
@@ -408,7 +416,7 @@ export async function splitCollectiveDelivery(
 
     // Read the items that belong to the collective so we can copy them
     // onto every newly-created individual row.
-    const itemsRes = await db.execute({
+    const itemsRes = await tx.execute({
       sql: "SELECT item FROM delivery_items WHERE delivery_id = ?",
       args: [deliveryId],
     });
@@ -424,7 +432,7 @@ export async function splitCollectiveDelivery(
     // project. The TX still keeps the whole flow atomic.
     const newDeliveryIds: number[] = [];
     for (const personId of personIds) {
-      const r = await db.execute({
+      const r = await tx.execute({
         sql: "INSERT INTO deliveries (person_id, delivery_type, beneficiary_count) VALUES (?, 'individual', 1) RETURNING id",
         args: [personId],
       });
@@ -459,13 +467,13 @@ export async function splitCollectiveDelivery(
       });
     }
 
-    await db.batch(statements, "write");
+    await tx.batch(statements);
 
     // ── Verify ──────────────────────────────────────────────────────
     // Read the individual rows we just inserted. We have the exact ids,
     // so we can SELECT them directly to confirm they exist with the
     // expected shape.
-    const verifyRes = await db.execute({
+    const verifyRes = await tx.execute({
       sql: `SELECT * FROM deliveries WHERE id IN (${newDeliveryIds.map(() => "?").join(",")}) ORDER BY id ASC`,
       args: newDeliveryIds,
     });
@@ -486,7 +494,7 @@ export async function splitCollectiveDelivery(
 
     // Confirm the items were actually copied.
     if (collectiveItems.length > 0) {
-      const itemCountRes = await db.execute({
+      const itemCountRes = await tx.execute({
         sql: `SELECT COUNT(*) AS cnt FROM delivery_items WHERE delivery_id IN (${newDeliveryIds.map(() => "?").join(",")})`,
         args: newDeliveryIds,
       });
@@ -501,7 +509,7 @@ export async function splitCollectiveDelivery(
 
     // Confirm the collective's new state.
     if (remaining > 0) {
-      const checkRes = await db.execute({
+      const checkRes = await tx.execute({
         sql: "SELECT beneficiary_count FROM deliveries WHERE id = ?",
         args: [deliveryId],
       });
@@ -514,7 +522,7 @@ export async function splitCollectiveDelivery(
         );
       }
     } else {
-      const stillThere = await db.execute({
+      const stillThere = await tx.execute({
         sql: "SELECT 1 FROM deliveries WHERE id = ?",
         args: [deliveryId],
       });
@@ -526,18 +534,18 @@ export async function splitCollectiveDelivery(
     }
 
     // ── COMMIT ───────────────────────────────────────────────────────
-    await db.execute("COMMIT");
+    await tx.commit();
 
     return {
       individualDeliveries: inserted,
       remainingCount: remaining,
     };
   } catch (err) {
-    // Best-effort rollback. If the connection is already in a failed
-    // state the ROLLBACK will throw — swallow that to surface the
+    // Best-effort rollback. If the transaction is already in a failed
+    // state the rollback will throw — swallow that to surface the
     // original error to the caller.
     try {
-      await db.execute("ROLLBACK");
+      await tx.rollback();
     } catch {
       // ignore
     }
