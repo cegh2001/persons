@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limit";
 import { extractFromImage, GeminiExtractionError, type ExtractedRecord } from "@/lib/gemini";
-import { matchPersonRecord, classifyMatch, type MatchResult } from "@/lib/db-scan";
+import { matchPersonRecord, classifyMatch, classifyScanError, type MatchResult } from "@/lib/db-scan";
 
 // Scan endpoints get a stricter limit: 5 requests per minute per IP
 // (one upload per ~12s). Generous enough for the preview-then-correct flow
@@ -81,12 +81,12 @@ export async function POST(req: NextRequest) {
     // ── Extract with Gemini ─────────────────────────────────────
     let extracted: ExtractedRecord[];
     try {
-      extracted = await extractFromImage(buffer);
+      extracted = await extractFromImage(buffer, file.type);
     } catch (err) {
       if (err instanceof GeminiExtractionError) {
         console.error("Gemini extraction error:", err.message);
         return NextResponse.json(
-          { error: err.userMessage },
+          { error: err.userMessage, code: err.code },
           { status: err.status }
         );
       }
@@ -94,21 +94,63 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Classify matches per record ──────────────────────────────
+    // Each record is matched independently so one bad query won't
+    // kill the whole batch. If ALL queries fail we surface the first
+    // error; otherwise we return partial results (failed records
+    // default to status "none").
     const matches: Record<number, MatchResult> = {};
+    let firstMatchError: unknown = null;
+
     await Promise.all(
       extracted.map(async (rec, idx) => {
-        const candidates = await matchPersonRecord(rec.name, rec.document_id);
-        matches[idx] = classifyMatch(rec.name, rec.document_id, candidates);
+        try {
+          const candidates = await matchPersonRecord(rec.name, rec.document_id);
+          matches[idx] = classifyMatch(rec.name, rec.document_id, candidates);
+        } catch (err) {
+          if (!firstMatchError) firstMatchError = err;
+          console.error(
+            `Match error for record ${idx} ("${rec.name}"):`,
+            err instanceof Error ? err.message : err
+          );
+          matches[idx] = { status: "none" };
+        }
       })
     );
 
+    // If EVERY match query failed the DB is likely unreachable —
+    // surface a clear error instead of silently returning "none" for all.
+    if (firstMatchError && extracted.length > 0 && Object.values(matches).every((m) => m.status === "none")) {
+      // Verify: were there actually candidates that should have matched?
+      // We can't know for sure, so we treat it as a DB error.
+      const info = classifyScanError(firstMatchError);
+      console.error(`Scan error [${info.code}] — all match queries failed:`, firstMatchError);
+      return NextResponse.json(
+        {
+          error: info.userMessage,
+          code: info.code,
+          // Still return extracted data so the user can work with it
+          // once the DB is back.
+          extracted,
+          matches,
+        },
+        { status: info.status }
+      );
+    }
+
     return NextResponse.json({ extracted, matches });
   } catch (err) {
+    // Gemini errors already handled in the inner catch; this covers
+    // everything else: DB failures, timeouts, unexpected runtime errors.
     if (err instanceof GeminiExtractionError) {
       console.error("Gemini extraction error (outer):", err.message);
-      return NextResponse.json({ error: err.userMessage }, { status: err.status });
+      return NextResponse.json({ error: err.userMessage, code: err.code }, { status: err.status });
     }
-    console.error("Scan error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+
+    const info = classifyScanError(err);
+    console.error(`Scan error [${info.code}]:`, err);
+    return NextResponse.json(
+      { error: info.userMessage, code: info.code },
+      { status: info.status }
+    );
   }
 }

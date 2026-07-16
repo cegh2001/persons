@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth";
 import { checkRateLimit, getRateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
 import { scanCommitSchema } from "@/lib/validation";
-import { commitScanBatch } from "@/lib/db-scan";
+import { commitScanBatch, classifyScanError } from "@/lib/db-scan";
 import { ZodError } from "zod";
 
 export async function POST(req: NextRequest) {
@@ -62,10 +62,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Cuerpo de solicitud JSON inválido." }, { status: 400 });
     }
     // Transaction or DB failure — the batch was rolled back in db-scan.ts.
-    console.error("Scan commit error:", err);
+    const info = classifyScanError(err);
+    console.error(`Scan commit error [${info.code}]:`, err);
     return NextResponse.json(
-      { error: "Error al guardar. Ningún registro fue modificado." },
-      { status: 500 }
+      { error: info.userMessage, code: info.code },
+      { status: info.status }
     );
   }
 }

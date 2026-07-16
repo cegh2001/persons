@@ -9,6 +9,51 @@
 import { getDb, type PersonRow } from "@/lib/db";
 import type { ScanCommitRow } from "@/lib/validation";
 
+// ── Error classification (shared by scan + commit endpoints) ────────────
+
+export interface ScanErrorInfo {
+  status: number;
+  userMessage: string;
+  code: string;
+}
+
+/**
+ * Inspect a thrown error and return a safe, client-friendly diagnostic.
+ * Never leaks stack traces or raw error messages to the client.
+ */
+export function classifyScanError(err: unknown): ScanErrorInfo {
+  const message = err instanceof Error ? err.message : String(err);
+  const name = err instanceof Error ? err.name : "";
+
+  // DB connection / query failures (libsql / Turso / SQLite)
+  if (
+    name === "LibsqlError" ||
+    /turso|libsql|database|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|connection/i.test(message)
+  ) {
+    return {
+      status: 502,
+      userMessage: "Error de conexión a la base de datos. Reintentá en unos segundos.",
+      code: "DB_CONNECTION",
+    };
+  }
+
+  // Timeout / abort
+  if (name === "AbortError" || /timeout|timed\s*out/i.test(message)) {
+    return {
+      status: 504,
+      userMessage: "El servidor tardó demasiado. Intentá de nuevo con menos datos.",
+      code: "TIMEOUT",
+    };
+  }
+
+  // Catch-all — still more useful than "Internal server error"
+  return {
+    status: 500,
+    userMessage: "Error interno. Si persiste, contactá al administrador.",
+    code: "INTERNAL",
+  };
+}
+
 // ── Match classification ───────────────────────────────────────────────
 
 export type MatchStatus = "exact" | "partial" | "none";
@@ -36,7 +81,6 @@ export async function matchPersonRecord(
   name: string,
   docId: string
 ): Promise<PersonRow[]> {
-  await getDb();
   const trimmedName = name.trim();
   const trimmedDoc = docId.trim();
 

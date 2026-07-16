@@ -182,8 +182,14 @@ function mapGeminiError(err: unknown): GeminiExtractionError {
 /**
  * Extract structured person records from a handwritten delivery list image.
  * Throws `GeminiExtractionError` on any failure — callers map to HTTP.
+ *
+ * @param imageBuffer  Raw image bytes (JPG or PNG).
+ * @param mimeType     MIME type of the image (e.g. "image/jpeg", "image/png").
  */
-export async function extractFromImage(imageBuffer: Buffer): Promise<ExtractedRecord[]> {
+export async function extractFromImage(
+  imageBuffer: Buffer,
+  mimeType = "image/jpeg"
+): Promise<ExtractedRecord[]> {
   if (!imageBuffer || imageBuffer.length === 0) {
     throw new GeminiExtractionError(
       "invalid_image",
@@ -197,7 +203,7 @@ export async function extractFromImage(imageBuffer: Buffer): Promise<ExtractedRe
   const imagePart = {
     inlineData: {
       data: imageBuffer.toString("base64"),
-      mimeType: "image/jpeg",
+      mimeType,
     },
   };
 
