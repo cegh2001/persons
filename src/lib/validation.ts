@@ -54,6 +54,90 @@ export const MEDICAL_SPECIALTIES = [
 export const medicalSpecialtySchema = z.enum(MEDICAL_SPECIALTIES);
 export type MedicalSpecialty = z.infer<typeof medicalSpecialtySchema>;
 
+// ── Structured Deliveries — Delivery schemas (PR 2) ──────────────────
+// Schemas used by the deliveries REST API. Catalogs above remain the
+// single source of truth — these schemas compose them.
+
+export const beneficiaryCountSchema = z
+  .number()
+  .int("beneficiary_count debe ser un entero")
+  .min(1, "beneficiary_count debe ser al menos 1")
+  .max(10_000, "beneficiary_count demasiado grande");
+
+export const createDeliverySchema = z.object({
+  person_id: z
+    .number({ message: "person_id es requerido" })
+    .int("person_id debe ser un entero")
+    .positive("person_id debe ser positivo"),
+  delivery_type: deliveryTypeSchema,
+  beneficiary_count: beneficiaryCountSchema
+    .optional()
+    .default(1),
+  items: z
+    .array(supplyItemSchema)
+    .max(20, "Máximo 20 ítems por entrega")
+    .optional()
+    .default([]),
+});
+
+export type CreateDeliveryInput = z.infer<typeof createDeliverySchema>;
+
+export const patchDeliverySchema = z
+  .object({
+    delivery_type: deliveryTypeSchema.optional(),
+    beneficiary_count: beneficiaryCountSchema.optional(),
+  })
+  .refine(
+    (v) =>
+      v.delivery_type !== undefined || v.beneficiary_count !== undefined,
+    { message: "Cuerpo vacío — no hay campos para actualizar." }
+  );
+
+export type PatchDeliveryInput = z.infer<typeof patchDeliverySchema>;
+
+export const createDeliveryItemSchema = z.object({
+  item: supplyItemSchema,
+});
+
+export type CreateDeliveryItemInput = z.infer<typeof createDeliveryItemSchema>;
+
+export const splitDeliverySchema = z.object({
+  person_ids: z
+    .array(
+      z
+        .number()
+        .int("person_id debe ser un entero")
+        .positive("person_id debe ser positivo")
+    )
+    .min(1, "Se requiere al menos un person_id para dividir.")
+    .max(1_000, "Demasiados person_ids en una sola operación."),
+});
+
+export type SplitDeliveryInput = z.infer<typeof splitDeliverySchema>;
+
+export const listDeliveriesQuerySchema = z.object({
+  person_id: z
+    .string()
+    .optional()
+    .transform((v) => (v !== undefined ? parseInt(v, 10) : undefined))
+    .pipe(z.number().int().positive().optional()),
+  type: deliveryTypeSchema.optional(),
+  page: z
+    .string()
+    .optional()
+    .default("1")
+    .transform((v) => parseInt(v, 10))
+    .pipe(z.number().int().min(1)),
+  pageSize: z
+    .string()
+    .optional()
+    .default("20")
+    .transform((v) => parseInt(v, 10))
+    .pipe(z.number().int().min(1).max(100)),
+});
+
+export type ListDeliveriesQuery = z.infer<typeof listDeliveriesQuerySchema>;
+
 // ── Persons ───────────────────────────────────────────────────────────
 
 export const createPersonSchema = z.object({
