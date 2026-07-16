@@ -81,9 +81,14 @@ const SYSTEM_PROMPT = [
   "Extraé los datos de cada persona de esta lista manuscrita de entregas de ayuda humanitaria.",
   "Por cada persona, devolvé: nombre completo, número de documento/CI, ubicación/sector,",
   'tipo de entrega ("supplies" para suministros o "medical" para atención médica), y notas adicionales.',
-  "Si un campo no está presente, dejalo vacío. No inventes datos — si no podés leer algo, deja el campo vacío.",
+  "",
+  "REGLAS IMPORTANTES:",
+  "- Cédulas: SOLO dígitos consecutivos, SIN puntos, SIN comas, SIN espacios. Ej: 12345678, no 12.345.678.",
+  "- Ubicación: transcribí EXACTAMENTE como aparece en la lista. No corrijas ortografía ni inventes sectores.",
+  "- Si un campo está ausente o ilegible, dejalo vacío. NUNCA inventes datos.",
+  "",
   "Devolvé hasta " + MAX_RECORDS + " registros en un array JSON.",
-].join(" ");
+].join("\n");
 
 // ── Response schema ────────────────────────────────────────────────────
 
@@ -98,11 +103,11 @@ const responseSchema: Schema = {
       },
       document_id: {
         type: Type.STRING,
-        description: "Número de documento o cédula. Vacío si no aparece.",
+        description: "Número de cédula SOLO con dígitos, sin puntos ni comas. Vacío si no aparece. Ej: 12345678",
       },
       location: {
         type: Type.STRING,
-        description: "Ubicación o sector donde reside la persona.",
+        description: "Sector o ubicación EXACTAMENTE como aparece escrito. No corregir ortografía.",
       },
       type: {
         type: Type.OBJECT,
@@ -135,6 +140,29 @@ function normalizeType(raw: unknown): ExtractedType {
     return raw;
   }
   return "supplies";
+}
+
+/**
+ * Strip all non-digit characters from a document ID.
+ * Handles common OCR artifacts: dots, spaces, hyphens, parentheses.
+ * "V-12.345.678" → "12345678"
+ */
+function normalizeDocumentId(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
+
+/**
+ * Normalize a location/sector name:
+ * - Trim whitespace
+ * - Collapse multiple spaces
+ * - Remove leading/trailing punctuation
+ * Does NOT change spelling — that's the model's job.
+ */
+function normalizeLocation(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/^[.,;:\-]+|[.,;:\-]+$/g, "");
 }
 
 function mapGeminiError(err: unknown): GeminiExtractionError {
@@ -365,10 +393,14 @@ export async function extractFromImage(
     const r = raw as Record<string, unknown>;
     const name = typeof r.name === "string" ? r.name.trim() : "";
     if (!name) continue;
+
+    const rawDocId = typeof r.document_id === "string" ? r.document_id : "";
+    const rawLoc = typeof r.location === "string" ? r.location : "";
+
     records.push({
       name,
-      document_id: typeof r.document_id === "string" ? r.document_id.trim() : "",
-      location: typeof r.location === "string" ? r.location.trim() : "",
+      document_id: normalizeDocumentId(rawDocId),
+      location: normalizeLocation(rawLoc),
       type: normalizeType(r.type),
       notes: typeof r.notes === "string" ? r.notes.trim() : "",
     });
