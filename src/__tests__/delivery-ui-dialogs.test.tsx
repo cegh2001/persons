@@ -215,6 +215,32 @@ describe("QuickDeliveryDialog", () => {
       screen.queryByText(/Seleccioná una persona/i)
     ).toBeNull();
   });
+  it("shows 'Registrando...' spinner while submitting", async () => {
+    // Use a deferred promise so the submitting state stays true
+    let resolveCreate: (value: unknown) => void;
+    const deferred = new Promise((resolve) => {
+      resolveCreate = resolve;
+    });
+    mockCreateDelivery.mockReturnValueOnce(deferred);
+
+    renderWithToaster(
+      <QuickDeliveryDialog
+        open
+        onOpenChange={() => {}}
+        persons={[PERSON]}
+        prefillPersonId={1}
+      />
+    );
+    // Click an item checkbox and submit
+    const agua = screen.getByLabelText("Agua") as HTMLInputElement;
+    fireEvent.click(agua);
+    submitForm();
+    await waitFor(() => {
+      expect(screen.getByText(/Registrando\.\.\./i)).toBeTruthy();
+    });
+    // Resolve to clean up
+    resolveCreate!({ id: 99 });
+  });
 });
 
 describe("QuickMedicalDialog", () => {

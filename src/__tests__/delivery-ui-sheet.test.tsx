@@ -404,4 +404,24 @@ describe("CensoStats extended fields", () => {
     expect(screen.getByText(/Sin datos de entregas/i)).toBeTruthy();
     expect(screen.getByText(/Sin atenciones registradas/i)).toBeTruthy();
   });
+
+  it("renders skeleton placeholders when stats is null (loading state)", () => {
+    const { container } = render(
+      <CensoStats
+        stats={null as unknown as Stats}
+        sectors={[]}
+        locationFilter="all"
+        onLocationFilterChange={() => {}}
+        suppliesFilter="all"
+        onSuppliesFilterChange={() => {}}
+        medicalFilter="all"
+        onMedicalFilterChange={() => {}}
+      />
+    );
+    // The skeleton grid should render instead of actual KPI values.
+    // With null stats, "Entregas realizadas" text should NOT appear.
+    expect(screen.queryByText("Entregas realizadas")).toBeNull();
+    // The container should have skeleton structure rendered (not empty)
+    expect(container.querySelectorAll("div").length).toBeGreaterThan(1);
+  });
 });
