@@ -17,55 +17,61 @@ vi.mock("sonner", async () => {
 });
 
 // Mock both hooks so the sheet doesn't fire real network calls.
+// Use mutable references so individual tests can override state.
+
+const mockDeliveriesDefault = {
+  deliveries: [
+    {
+      id: 1,
+      person_id: 1,
+      delivery_type: "individual",
+      beneficiary_count: 1,
+      created_at: "2026-01-10T10:00:00Z",
+      items: [{ id: 1, delivery_id: 1, item: "agua" }],
+    },
+    {
+      id: 2,
+      person_id: 1,
+      delivery_type: "collective",
+      beneficiary_count: 5,
+      created_at: "2026-01-12T14:00:00Z",
+      items: [
+        { id: 2, delivery_id: 2, item: "kit_alimento" },
+        { id: 3, delivery_id: 2, item: "pañales" },
+      ],
+    },
+  ] as any[],
+  loading: false,
+  error: null as Error | null,
+  refetch: vi.fn(),
+  createDelivery: vi.fn(),
+};
+
+const mockAttentionsDefault = {
+  attentions: [
+    {
+      id: 1,
+      person_id: 1,
+      professional: "Dra. Pérez",
+      specialty: "medicina_general",
+      patient_age: 30,
+      patient_sex: "F",
+      diagnosis: null,
+      notes: null,
+      created_at: "2026-01-11T09:00:00Z",
+    },
+  ] as any[],
+  loading: false,
+  error: null as Error | null,
+  refetch: vi.fn(),
+  createAttention: vi.fn(),
+};
+
 vi.mock("@/hooks/useDeliveries", () => ({
-  useDeliveries: () => ({
-    deliveries: [
-      {
-        id: 1,
-        person_id: 1,
-        delivery_type: "individual",
-        beneficiary_count: 1,
-        created_at: "2026-01-10T10:00:00Z",
-        items: [{ id: 1, delivery_id: 1, item: "agua" }],
-      },
-      {
-        id: 2,
-        person_id: 1,
-        delivery_type: "collective",
-        beneficiary_count: 5,
-        created_at: "2026-01-12T14:00:00Z",
-        items: [
-          { id: 2, delivery_id: 2, item: "kit_alimento" },
-          { id: 3, delivery_id: 2, item: "pañales" },
-        ],
-      },
-    ],
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-    createDelivery: vi.fn(),
-  }),
+  useDeliveries: () => mockDeliveriesDefault,
 }));
 vi.mock("@/hooks/useMedicalAttentions", () => ({
-  useMedicalAttentions: () => ({
-    attentions: [
-      {
-        id: 1,
-        person_id: 1,
-        professional: "Dra. Pérez",
-        specialty: "medicina_general",
-        patient_age: 30,
-        patient_sex: "F",
-        diagnosis: null,
-        notes: null,
-        created_at: "2026-01-11T09:00:00Z",
-      },
-    ],
-    loading: false,
-    error: null,
-    refetch: vi.fn(),
-    createAttention: vi.fn(),
-  }),
+  useMedicalAttentions: () => mockAttentionsDefault,
 }));
 
 import { PersonDetailSheet } from "@/components/PersonDetailSheet";
@@ -199,6 +205,76 @@ describe("PersonDetailSheet", () => {
     const btn = screen.getByText(/Nueva entrega/i);
     fireEvent.click(btn);
     expect(onNewDelivery).toHaveBeenCalledWith(1);
+  });
+
+  it("shows loading skeleton while deliveries are being fetched", () => {
+    mockDeliveriesDefault.loading = true;
+    mockDeliveriesDefault.deliveries = [];
+    render(
+      <PersonDetailSheet
+        person={PERSON}
+        isOpen
+        onClose={() => {}}
+        role="admin"
+        onNewDelivery={() => {}}
+        onNewAttention={() => {}}
+      />
+    );
+    // Skeleton rows should appear instead of "Sin entregas registradas"
+    expect(screen.queryByText("Sin entregas registradas")).toBeNull();
+    // Reset
+    mockDeliveriesDefault.loading = false;
+  });
+
+  it("shows loading skeleton while medical attentions are being fetched", () => {
+    mockAttentionsDefault.loading = true;
+    mockAttentionsDefault.attentions = [];
+    render(
+      <PersonDetailSheet
+        person={PERSON}
+        isOpen
+        onClose={() => {}}
+        role="admin"
+        onNewDelivery={() => {}}
+        onNewAttention={() => {}}
+      />
+    );
+    // Skeleton rows should appear instead of "Sin atenciones registradas"
+    expect(screen.queryByText("Sin atenciones registradas")).toBeNull();
+    // Reset
+    mockAttentionsDefault.loading = false;
+  });
+
+  it("shows empty state when person has no deliveries", () => {
+    mockDeliveriesDefault.loading = false;
+    mockDeliveriesDefault.deliveries = [];
+    render(
+      <PersonDetailSheet
+        person={PERSON}
+        isOpen
+        onClose={() => {}}
+        role="admin"
+        onNewDelivery={() => {}}
+        onNewAttention={() => {}}
+      />
+    );
+    expect(screen.getByText("Sin entregas registradas")).toBeTruthy();
+  });
+
+  it("shows empty state when person has no medical attentions", () => {
+    mockAttentionsDefault.loading = false;
+    mockAttentionsDefault.attentions = [];
+    render(
+      <PersonDetailSheet
+        person={PERSON}
+        isOpen
+        onClose={() => {}}
+        role="admin"
+        onNewDelivery={() => {}}
+        onNewAttention={() => {}}
+      />
+    );
+    expect(screen.getByText("Sin atenciones registradas")).toBeTruthy();
   });
 });
 

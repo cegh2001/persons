@@ -197,6 +197,24 @@ describe("QuickDeliveryDialog", () => {
       ).toBeTruthy();
     });
   });
+
+  it("pre-selects the person when prefillPersonId is provided", () => {
+    mockCreateDelivery.mockResolvedValueOnce({ id: 99 });
+    renderWithToaster(
+      <QuickDeliveryDialog
+        open
+        onOpenChange={() => {}}
+        persons={[PERSON]}
+        prefillPersonId={1}
+      />
+    );
+    // The person is pre-selected — validation should pass the person check
+    // and go to item validation instead
+    submitForm();
+    expect(
+      screen.queryByText(/Seleccioná una persona/i)
+    ).toBeNull();
+  });
 });
 
 describe("QuickMedicalDialog", () => {
@@ -249,5 +267,23 @@ describe("QuickMedicalDialog", () => {
       ).toBeTruthy();
     });
     expect(mockCreateAttention).not.toHaveBeenCalled();
+  });
+
+  it("pre-selects the person when prefillPersonId is provided", () => {
+    mockCreateAttention.mockResolvedValueOnce({ id: 88 });
+    renderWithToaster(
+      <QuickMedicalDialog
+        open
+        onOpenChange={() => {}}
+        persons={[PERSON]}
+        prefillPersonId={1}
+      />
+    );
+    // The person is pre-selected — validation should pass the person check
+    // and go to professional validation instead
+    submitForm();
+    expect(
+      screen.queryByText(/Seleccioná una persona/i)
+    ).toBeNull();
   });
 });
