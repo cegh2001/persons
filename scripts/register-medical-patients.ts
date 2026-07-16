@@ -303,13 +303,13 @@ async function main() {
           const newRawName = p.document_id ? `${p.name} ${p.document_id}` : p.name;
           await client.execute({
             sql: `UPDATE persons SET name = ?, raw_name = ?, notes = ?, received_medical = ?, received_supplies = ? WHERE id = ?`,
-            args: [p.name, newRawName, finalNotes, medical, supplies, item.existingId],
+            args: [p.name, newRawName, finalNotes, medical, supplies, item.existingId!],
           });
           console.log(`   🔄 Actualizado + nombre corregido: "${item.existingName}" → "${p.name}" (ID ${item.existingId})`);
         } else {
           await client.execute({
             sql: `UPDATE persons SET notes = ?, received_medical = ?, received_supplies = ? WHERE id = ?`,
-            args: [finalNotes, medical, supplies, item.existingId],
+            args: [finalNotes, medical, supplies, item.existingId!],
           });
           console.log(`   🔄 Actualizado: ${p.name} (ID ${item.existingId})`);
         }

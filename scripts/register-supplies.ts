@@ -445,13 +445,13 @@ interface PlanItem {
           const newRawName = p.ci ? `${p.name} ${p.ci}` : p.name;
           await client.execute({
             sql: `UPDATE persons SET name=?, raw_name=?, notes=?, received_supplies=1, received_medical=? WHERE id=?`,
-            args: [p.name, newRawName, finalNotes, medical, item.existingId],
+            args: [p.name, newRawName, finalNotes, medical, item.existingId!],
           });
           console.log(`   🔄 Actualizado + nombre: "${item.existingName}" → "${p.name}" (ID ${item.existingId})`);
         } else {
           await client.execute({
             sql: `UPDATE persons SET notes=?, received_supplies=1, received_medical=? WHERE id=?`,
-            args: [finalNotes, medical, item.existingId],
+            args: [finalNotes, medical, item.existingId!],
           });
           console.log(`   🔄 Actualizado: ${p.name} (ID ${item.existingId})`);
         }
