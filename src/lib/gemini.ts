@@ -131,47 +131,107 @@ function normalizeType(raw: unknown): ExtractedType {
 function mapGeminiError(err: unknown): GeminiExtractionError {
   if (err instanceof GeminiExtractionError) return err;
 
+  // ── Dump the raw error for Vercel logs BEFORE classification ──
+  // JSON.stringify on an Error yields {} — extract own properties manually.
+  const rawKeys = err && typeof err === "object" ? Object.getOwnPropertyNames(err) : [];
+  const rawSnapshot: Record<string, unknown> = {};
+  for (const k of rawKeys) {
+    try { rawSnapshot[k] = (err as Record<string, unknown>)[k]; } catch { /* ignore */ }
+  }
+  console.error("Raw Gemini SDK error dump:", JSON.stringify(rawSnapshot, null, 2));
+
   // The SDK exposes an ApiError-like shape: { name, message, status }
-  const anyErr = err as { name?: string; status?: number; message?: string; code?: number };
+  // v2.x also has: code, details, errors[], request, response
+  const anyErr = err as { name?: string; status?: number; message?: string; code?: number; cause?: unknown };
   const name = anyErr?.name ?? "";
   const status = anyErr?.status ?? anyErr?.code ?? 0;
   const message = anyErr?.message ?? String(err);
 
-  if (status === 429 || /rate.?limit|quota|resource_exhausted/i.test(message)) {
+  // Include any nested cause for diagnostics
+  const causeMsg =
+    anyErr?.cause && typeof anyErr.cause === "object" && "message" in anyErr.cause
+      ? String((anyErr.cause as { message: unknown }).message)
+      : "";
+
+  const fullMessage = causeMsg ? `${message} (cause: ${causeMsg})` : message;
+
+  // ── Classification ──────────────────────────────────────────────
+
+  if (status === 429 || /rate.?limit|quota|resource_exhausted/i.test(fullMessage)) {
     return new GeminiExtractionError(
       "rate_limited",
-      `Gemini rate limit hit: ${message}`,
+      `Gemini rate limit hit: ${fullMessage}`,
       "Límite de escaneo alcanzado. Intentá en unos minutos.",
       429
     );
   }
-  if (status === 401 || status === 403 || /api.?key|permission|unauthenticated|unauthorized/i.test(message)) {
+  if (status === 401 || status === 403 || /api.?key|permission|unauthenticated|unauthorized/i.test(fullMessage)) {
     return new GeminiExtractionError(
       "auth",
-      `Gemini auth failure: ${message}`,
+      `Gemini auth failure: ${fullMessage}`,
       "Error de configuración del servidor.",
       500
     );
   }
-  if (status === 400 || /invalid|image|unsupported/i.test(message)) {
+  if (status === 400 || /invalid|image|unsupported/i.test(fullMessage)) {
     return new GeminiExtractionError(
       "invalid_image",
-      `Gemini rejected image: ${message}`,
+      `Gemini rejected image: ${fullMessage}`,
       "No se pudo procesar la imagen. Verificá que sea una foto clara de la lista.",
       400
     );
   }
-  if (/model|gemma/i.test(name) && /not.found|invalid/i.test(message)) {
+
+  // Model not found / not accessible (check name OR message)
+  if (
+    /model|gemma/i.test(name) &&
+    /not[_\s]?found|invalid|unavailable/i.test(fullMessage)
+  ) {
     return new GeminiExtractionError(
       "config",
-      `Gemini model misconfig: ${message}`,
+      `Gemini model misconfig: ${fullMessage}`,
       "Error de configuración del servidor.",
       500
     );
   }
+
+  // Model does not support requested feature (e.g., responseJsonSchema on a model that lacks it)
+  if (/response.?schema|json.?schema|not.?support|unsupported/i.test(fullMessage)) {
+    return new GeminiExtractionError(
+      "config",
+      `Gemini model doesn't support requested feature: ${fullMessage}`,
+      "Error de configuración del servidor.",
+      500
+    );
+  }
+
+  // Network / fetch failures (DNS, TLS, connection refused)
+  if (
+    name === "TypeError" ||
+    name === "FetchError" ||
+    /fetch|network|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|TLS|SSL/i.test(fullMessage)
+  ) {
+    return new GeminiExtractionError(
+      "unknown",
+      `Gemini network/fetch error: ${fullMessage}`,
+      "Error de conexión con el servicio de escaneo. Verificá tu conexión a internet.",
+      502
+    );
+  }
+
+  // Internal server error from Gemini (500, 502, 503, 504)
+  if (status >= 500) {
+    return new GeminiExtractionError(
+      "unknown",
+      `Gemini server error (HTTP ${status}): ${fullMessage}`,
+      "El servicio de escaneo no está disponible en este momento. Reintentá en unos minutos.",
+      502
+    );
+  }
+
   return new GeminiExtractionError(
     "unknown",
-    `Gemini call failed: ${message}`,
+    `Gemini call failed (name=${name}, status=${status}): ${fullMessage}`,
     "Error al procesar la imagen. Intentá de nuevo.",
     500
   );
