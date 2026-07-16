@@ -69,7 +69,7 @@ export function ScanPreviewTable({
             <TableHead className="w-36">Documento</TableHead>
             <TableHead className="min-w-[160px]">Sector</TableHead>
             <TableHead className="w-32">Tipo</TableHead>
-            <TableHead className="hidden md:table-cell min-w-[180px]">Notas</TableHead>
+            <TableHead className="min-w-[160px]">Notas</TableHead>
             <TableHead className="w-48">Coincidencia</TableHead>
           </TableRow>
         </TableHeader>
@@ -130,49 +130,56 @@ export function ScanPreviewTable({
               </TableCell>
 
               <TableCell>
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-1 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={row.received_supplies}
-                      onChange={(e) =>
-                        onUpdate(idx, { received_supplies: e.target.checked })
-                      }
-                      disabled={disabled || !row.include}
-                      aria-label="Suministros"
-                      className="size-3.5 rounded border-slate-300 accent-indigo-600 disabled:cursor-not-allowed"
-                    />
-                    <Package className="size-3.5 text-indigo-500" />
-                    <span className="text-[11px] font-medium text-foreground/80">
-                      Suministros
+                <div className="flex flex-col gap-1">
+                  {!row.received_supplies && !row.received_medical && (
+                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                      ⚠ Sin tipo
                     </span>
-                  </label>
-                  <label className="flex items-center gap-1 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={row.received_medical}
-                      onChange={(e) =>
-                        onUpdate(idx, { received_medical: e.target.checked })
-                      }
-                      disabled={disabled || !row.include}
-                      aria-label="Atención médica"
-                      className="size-3.5 rounded border-slate-300 accent-rose-600 disabled:cursor-not-allowed"
-                    />
-                    <Stethoscope className="size-3.5 text-rose-500" />
-                    <span className="text-[11px] font-medium text-foreground/80">
-                      Médica
-                    </span>
-                  </label>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={row.received_supplies}
+                        onChange={(e) =>
+                          onUpdate(idx, { received_supplies: e.target.checked })
+                        }
+                        disabled={disabled || !row.include}
+                        aria-label="Suministros"
+                        className="size-3.5 rounded border-slate-300 accent-indigo-600 disabled:cursor-not-allowed"
+                      />
+                      <Package className="size-3.5 text-indigo-500" />
+                      <span className="text-[11px] font-medium text-foreground/80">
+                        Sum.
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={row.received_medical}
+                        onChange={(e) =>
+                          onUpdate(idx, { received_medical: e.target.checked })
+                        }
+                        disabled={disabled || !row.include}
+                        aria-label="Atención médica"
+                        className="size-3.5 rounded border-slate-300 accent-rose-600 disabled:cursor-not-allowed"
+                      />
+                      <Stethoscope className="size-3.5 text-rose-500" />
+                      <span className="text-[11px] font-medium text-foreground/80">
+                        Méd.
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </TableCell>
 
-              <TableCell className="hidden md:table-cell">
+              <TableCell>
                 <input
                   type="text"
                   value={row.notes}
                   onChange={(e) => onUpdate(idx, { notes: e.target.value })}
                   disabled={disabled || !row.include}
-                  placeholder="Notas adicionales"
+                  placeholder="Especialidad, médico, notas..."
                   aria-label="Notas"
                   className={cellInputMutedClass}
                 />
