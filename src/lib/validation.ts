@@ -138,6 +138,114 @@ export const listDeliveriesQuerySchema = z.object({
 
 export type ListDeliveriesQuery = z.infer<typeof listDeliveriesQuerySchema>;
 
+// ── Structured Deliveries — Medical attention schemas (PR 3) ──────────
+// Schemas used by the medical-attentions REST API. The catalog enum
+// `medicalSpecialtySchema` is the single source of truth for the
+// specialty list; the rest of the schemas compose it.
+
+/**
+ * Optional patient demographics collected at attention time. `age` is
+ * stored as INTEGER (years) and `sex` as a short free-text label — the
+ * application does not enforce a closed enum here so the field can
+ * record what the clinician actually wrote on the form.
+ */
+export const patientAgeSchema = z
+  .number()
+  .int("La edad debe ser un entero.")
+  .min(0, "La edad no puede ser negativa.")
+  .max(150, "La edad parece fuera de rango.");
+
+export const patientSexSchema = z
+  .string()
+  .trim()
+  .min(1, "El sexo no puede estar vacío.")
+  .max(40)
+  .optional();
+
+export const diagnosisSchema = z
+  .string()
+  .trim()
+  .max(2_000, "El diagnóstico no puede exceder 2000 caracteres.")
+  .optional();
+
+export const notesAttSchema = z
+  .string()
+  .trim()
+  .max(2_000, "Las notas no pueden exceder 2000 caracteres.")
+  .optional();
+
+export const professionalSchema = z
+  .string()
+  .trim()
+  .min(1, "El profesional es requerido.")
+  .max(200, "El nombre del profesional es demasiado largo.");
+
+export const createMedicalAttentionSchema = z.object({
+  person_id: z
+    .number({ message: "person_id es requerido" })
+    .int("person_id debe ser un entero")
+    .positive("person_id debe ser positivo"),
+  professional: professionalSchema,
+  specialty: medicalSpecialtySchema,
+  patient_age: patientAgeSchema.optional(),
+  patient_sex: patientSexSchema,
+  diagnosis: diagnosisSchema,
+  notes: notesAttSchema,
+});
+
+export type CreateMedicalAttentionInput = z.infer<typeof createMedicalAttentionSchema>;
+
+export const patchMedicalAttentionSchema = z
+  .object({
+    professional: professionalSchema.optional(),
+    specialty: medicalSpecialtySchema.optional(),
+    patient_age: patientAgeSchema.optional(),
+    patient_sex: patientSexSchema,
+    diagnosis: diagnosisSchema,
+    notes: notesAttSchema,
+  })
+  .refine(
+    (v) =>
+      v.professional !== undefined ||
+      v.specialty !== undefined ||
+      v.patient_age !== undefined ||
+      v.patient_sex !== undefined ||
+      v.diagnosis !== undefined ||
+      v.notes !== undefined,
+    { message: "Cuerpo vacío — no hay campos para actualizar." }
+  );
+
+export type PatchMedicalAttentionInput = z.infer<typeof patchMedicalAttentionSchema>;
+
+export const listMedicalAttentionsQuerySchema = z.object({
+  person_id: z
+    .string()
+    .optional()
+    .transform((v) => (v !== undefined ? parseInt(v, 10) : undefined))
+    .pipe(z.number().int().positive().optional()),
+  professional: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .optional(),
+  specialty: medicalSpecialtySchema.optional(),
+  page: z
+    .string()
+    .optional()
+    .default("1")
+    .transform((v) => parseInt(v, 10))
+    .pipe(z.number().int().min(1)),
+  pageSize: z
+    .string()
+    .optional()
+    .default("20")
+    .transform((v) => parseInt(v, 10))
+    .pipe(z.number().int().min(1).max(100)),
+});
+
+export type ListMedicalAttentionsQuery = z.infer<typeof listMedicalAttentionsQuerySchema>;
+
 // ── Persons ───────────────────────────────────────────────────────────
 
 export const createPersonSchema = z.object({

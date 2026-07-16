@@ -371,7 +371,82 @@ export async function getStats() {
     "SELECT location, COUNT(*) as count, SUM(CASE WHEN is_vulnerable = 1 THEN 1 ELSE 0 END) as vulnerable_count FROM persons GROUP BY location ORDER BY count DESC"
   );
 
+  // ── Structured Deliveries — extended stats (PR 3) ───────────────────
+  // All NEW fields. Existing fields above are preserved exactly so
+  // existing API consumers see no breaking change.
+
+  // Total deliveries (S1)
+  const totalDeliveriesRes = await client.execute(
+    "SELECT COUNT(*) AS count FROM deliveries"
+  );
+  const totalDeliveries = Number(totalDeliveriesRes.rows[0]?.count ?? 0);
+
+  // Persons reached: distinct individual recipients + the
+  // beneficiary_count sum on every collective delivery (D7 / S2).
+  //   - individual deliveries count 1 each
+  //   - collective deliveries count `beneficiary_count` each
+  const personsReachedRes = await client.execute(
+    `SELECT
+       COALESCE(SUM(CASE WHEN delivery_type = 'individual' THEN 1 ELSE beneficiary_count END), 0) AS reached
+     FROM deliveries`
+  );
+  const personsReached = Number(personsReachedRes.rows[0]?.reached ?? 0);
+
+  // Top delivered items (S3) — item catalog: { item: count }, sorted by
+  // count DESC, item ASC. Capped to top 20 to keep the payload small.
+  const itemsDistributedRes = await client.execute(
+    `SELECT item, COUNT(*) AS count
+     FROM delivery_items
+     GROUP BY item
+     ORDER BY count DESC, item ASC
+     LIMIT 20`
+  );
+  const itemsDistributed: Record<string, number> = {};
+  for (const r of itemsDistributedRes.rows as unknown as {
+    item: string;
+    count: number | bigint;
+  }[]) {
+    itemsDistributed[r.item] = Number(r.count);
+  }
+
+  // Total medical attentions (S4)
+  const totalMedicalAttentionsRes = await client.execute(
+    "SELECT COUNT(*) AS count FROM medical_attentions"
+  );
+  const totalMedicalAttentions = Number(totalMedicalAttentionsRes.rows[0]?.count ?? 0);
+
+  // Medical attentions by specialty (S5)
+  const medicalBySpecialtyRes = await client.execute(
+    `SELECT specialty, COUNT(*) AS count
+     FROM medical_attentions
+     GROUP BY specialty
+     ORDER BY count DESC, specialty ASC`
+  );
+  const medicalBySpecialty: Record<string, number> = {};
+  for (const r of medicalBySpecialtyRes.rows as unknown as {
+    specialty: string;
+    count: number | bigint;
+  }[]) {
+    medicalBySpecialty[r.specialty] = Number(r.count);
+  }
+
+  // Medical attentions by professional (S6)
+  const medicalByProfessionalRes = await client.execute(
+    `SELECT professional, COUNT(*) AS count
+     FROM medical_attentions
+     GROUP BY professional
+     ORDER BY count DESC, professional ASC`
+  );
+  const medicalByProfessional: Record<string, number> = {};
+  for (const r of medicalByProfessionalRes.rows as unknown as {
+    professional: string;
+    count: number | bigint;
+  }[]) {
+    medicalByProfessional[r.professional] = Number(r.count);
+  }
+
   return {
+    // ── Existing fields — preserved (S7) ──────────────────────────────
     total,
     vulnerableTotal,
     suppliesTotal,
@@ -380,6 +455,13 @@ export async function getStats() {
       location: r.location as string,
       count: Number(r.count ?? 0),
       vulnerableCount: Number(r.vulnerable_count ?? 0)
-    }))
+    })),
+    // ── New structured-deliveries fields (PR 3) ───────────────────────
+    totalDeliveries,
+    personsReached,
+    itemsDistributed,
+    totalMedicalAttentions,
+    medicalBySpecialty,
+    medicalByProfessional,
   };
 }
