@@ -13,7 +13,7 @@
  */
 
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Camera, Loader2, ScanLine, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Camera, Loader2, ScanLine, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -41,38 +41,50 @@ export function ScanUpload({ open, onOpenChange, onCommitted }: ScanUploadProps)
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
-  // Tracks the previous open state so we can detect a close transition
-  // and reset local + hook state when the user dismisses the dialog.
+  const [showCachePrompt, setShowCachePrompt] = React.useState(false);
   const wasOpenRef = React.useRef(open);
 
-  // ── Reset helper (called on close) ──────────────────────────────
+  // ── When dialog opens, check for cached data ────────────────────
+  React.useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      // Dialog just opened. If there's cached data and no rows loaded yet, prompt.
+      if (scan.hasCachedData && !scan.hasRows) {
+        setShowCachePrompt(true);
+      }
+    }
+    wasOpenRef.current = open;
+  }, [open, scan.hasCachedData, scan.hasRows]);
+
+  // ── Reset local UI state (image preview, file input) — does NOT
+  //     touch hook data so the cache survives modal close. ──────────
   const resetLocalState = React.useCallback(() => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setDragOver(false);
+    setShowCachePrompt(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
-    scan.reset();
-    // Note: scan.reset is stable, but including it would create a new
-    // callback every render. We intentionally don't depend on it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewUrl]);
 
-  // ── Wraps the parent's onOpenChange to reset on close ───────────
   const handleOpenChange = React.useCallback(
     (next: boolean) => {
-      if (wasOpenRef.current && !next) {
+      if (!next) {
         resetLocalState();
       }
-      wasOpenRef.current = next;
       onOpenChange(next);
     },
     [onOpenChange, resetLocalState]
   );
 
-  // Keep the ref in sync if the parent toggles the prop externally.
-  React.useEffect(() => {
-    wasOpenRef.current = open;
-  }, [open]);
+  // ── Cache actions ───────────────────────────────────────────────
+  const handleRestore = () => {
+    scan.restoreFromCache();
+    setShowCachePrompt(false);
+  };
+
+  const handleDiscard = () => {
+    scan.discardCache();
+    setShowCachePrompt(false);
+  };
 
   // ── File selection handler ───────────────────────────────────────
   const handleFile = React.useCallback(
@@ -136,6 +148,43 @@ export function ScanUpload({ open, onOpenChange, onCommitted }: ScanUploadProps)
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className={cn("max-h-[90vh] overflow-y-auto", contentClass)}>
+        {/* ── Cache restoration prompt ──────────────────────────── */}
+        {showCachePrompt && (
+          <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 px-4 py-3">
+            <div className="flex items-start gap-2">
+              <ScanLine className="size-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  Tenés un escaneo pendiente
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Se encontraron datos de un escaneo anterior que no fue confirmado.
+                  Podés restaurarlo para seguir editando o descartarlo.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleRestore}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                Restaurar
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleDiscard}
+              >
+                <Trash2 className="size-3.5 mr-1" />
+                Descartar
+              </Button>
+            </div>
+          </div>
+        )}
+
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanLine className="size-4 text-indigo-600 dark:text-indigo-400" />
@@ -180,7 +229,6 @@ export function ScanUpload({ open, onOpenChange, onCommitted }: ScanUploadProps)
               onUpdate={scan.updateRow}
               onToggleInclude={scan.toggleInclude}
               onSetMergeAction={scan.setMergeAction}
-              onCancel={() => handleOpenChange(false)}
             />
           )}
 
@@ -197,22 +245,47 @@ export function ScanUpload({ open, onOpenChange, onCommitted }: ScanUploadProps)
 
         {!showConfirm && (
           <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => handleOpenChange(false)}
-              disabled={isUploading || isCommitting}
-            >
-              Cancelar
-            </Button>
-            {showPreview && (
+            {showPreview ? (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    handleDiscard();
+                    handleOpenChange(false);
+                  }}
+                  disabled={isUploading || isCommitting}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="size-3.5 mr-1" />
+                  Descartar
+                </Button>
+                <div className="flex-1" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => handleOpenChange(false)}
+                  disabled={isUploading || isCommitting}
+                >
+                  Cerrar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={goToConfirm}
+                  disabled={isCommitting || scan.rows.filter((r) => r.include).length === 0}
+                >
+                  Continuar
+                  <ArrowRight className="size-4 ml-2" />
+                </Button>
+              </>
+            ) : (
               <Button
                 type="button"
-                onClick={goToConfirm}
-                disabled={isCommitting || scan.rows.filter((r) => r.include).length === 0}
+                variant="ghost"
+                onClick={() => handleOpenChange(false)}
+                disabled={isUploading || isCommitting}
               >
-                Continuar
-                <ArrowRight className="size-4 ml-2" />
+                Cancelar
               </Button>
             )}
           </DialogFooter>
@@ -374,7 +447,6 @@ interface PreviewStepProps {
   onUpdate: ReturnType<typeof useScanData>["updateRow"];
   onToggleInclude: ReturnType<typeof useScanData>["toggleInclude"];
   onSetMergeAction: ReturnType<typeof useScanData>["setMergeAction"];
-  onCancel: () => void;
 }
 
 function PreviewStep({
@@ -384,7 +456,6 @@ function PreviewStep({
   onUpdate,
   onToggleInclude,
   onSetMergeAction,
-  onCancel,
 }: PreviewStepProps) {
   return (
     <div className="space-y-3">
@@ -410,17 +481,7 @@ function PreviewStep({
         </p>
       )}
 
-      <div className="flex justify-between items-center pt-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onCancel}
-          disabled={disabled}
-        >
-          <ArrowLeft className="size-3.5 mr-1" />
-          Cancelar
-        </Button>
+      <div className="flex justify-end items-center pt-1">
         <span className="text-[11px] text-muted-foreground">
           {rows.filter((r) => r.include).length} de {rows.length} seleccionados
         </span>

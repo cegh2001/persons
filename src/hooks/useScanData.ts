@@ -16,7 +16,7 @@
  *  - Expose a `reset()` for the dialog's open/close cycle.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { ExtractedRecord } from "@/lib/gemini";
 import type { MatchResult, MatchStatus } from "@/lib/db-scan";
@@ -25,6 +25,40 @@ import type { ScanCommitRow } from "@/lib/validation";
 const MAX_DIMENSION = 2048;
 const JPEG_QUALITY = 0.85;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/jpg", "image/png"]);
+const CACHE_KEY = "scan-preview-cache";
+
+interface ScanCache {
+  rows: ScanRow[];
+  extracted: ExtractedRecord[];
+  matches: Record<number, MatchResult>;
+}
+
+function saveCache(data: ScanCache): void {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage full or unavailable — silently ignore.
+  }
+}
+
+function loadCache(): ScanCache | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as ScanCache;
+  } catch {
+    clearCache();
+    return null;
+  }
+}
+
+function clearCache(): void {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export type ScanAction = ScanCommitRow["action"];
 
@@ -131,12 +165,49 @@ export function useScanData() {
   const [extracted, setExtracted] = useState<ExtractedRecord[]>([]);
   const [matches, setMatches] = useState<Record<number, MatchResult>>({});
   const [rows, setRows] = useState<ScanRow[]>([]);
+  const [hasCachedData, setHasCachedData] = useState(() => loadCache() !== null);
 
   /** Guards in-flight requests from writing to state after a reset. */
   const cancelledRef = useRef(false);
 
+  // Persist every edit to localStorage so data survives modal close / refresh.
+  useEffect(() => {
+    if (state.hasRows && rows.length > 0) {
+      saveCache({ rows, extracted, matches });
+    }
+  }, [rows, state.hasRows, extracted, matches]);
+
   const reset = useCallback(() => {
     cancelledRef.current = true;
+    clearCache();
+    setHasCachedData(false);
+    setState(INITIAL_STATE);
+    setExtracted([]);
+    setMatches({});
+    setRows([]);
+  }, []);
+
+  /** Restore a previously-cached scan session (e.g. after modal close / refresh). */
+  const restoreFromCache = useCallback(() => {
+    const cached = loadCache();
+    if (!cached) return false;
+    setExtracted(cached.extracted ?? []);
+    setMatches(cached.matches ?? {});
+    setRows(cached.rows ?? []);
+    setState({
+      phase: "idle",
+      hasRows: (cached.rows ?? []).length > 0,
+      confirming: false,
+      errorMessage: null,
+      lastCommitted: null,
+    });
+    return true;
+  }, []);
+
+  /** Discard cached data without committing. */
+  const discardCache = useCallback(() => {
+    clearCache();
+    setHasCachedData(false);
     setState(INITIAL_STATE);
     setExtracted([]);
     setMatches({});
@@ -255,6 +326,12 @@ export function useScanData() {
     setExtracted(data.extracted ?? []);
     setMatches(data.matches ?? {});
     setRows(builtRows);
+    setHasCachedData(true);
+    saveCache({
+      rows: builtRows,
+      extracted: data.extracted ?? [],
+      matches: data.matches ?? {},
+    });
     setState({
       phase: "idle",
       hasRows: builtRows.length > 0,
@@ -387,6 +464,8 @@ export function useScanData() {
     if (cancelledRef.current) return null;
 
     toast.success(`${count} ${count === 1 ? "registro guardado" : "registros guardados"}.`);
+    clearCache();
+    setHasCachedData(false);
     cancelledRef.current = true; // Mark done — caller will close dialog
     setState({
       phase: "idle",
@@ -412,7 +491,10 @@ export function useScanData() {
     extracted,
     matches,
     rows,
-    // Actions
+    // Cache
+    hasCachedData,
+    restoreFromCache,
+    discardCache,
     startScan,
     updateRow,
     toggleInclude,
