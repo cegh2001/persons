@@ -78,25 +78,27 @@ export interface ParsedAttentionCandidate {
 const ITEM_PATTERNS: ReadonlyArray<[RegExp, SupplyItem]> = [
   [/\bagua(?:s)?\b/i, "agua"],
   [/\belectrolit\b/i, "electrolit"],
-  // kit_higiene covers "kit de aseo personal", "kit aseo", "kit
-  // personal", "kit higiene", "Kit Higiene Personal", etc.
-  [/\bkit\s+(?:de\s+)?(?:aseo\s+personal|aseo|personal(?:es)?|higiene)\b/i, "kit_higiene"],
-  // kit_alimento covers "alimento(s)", "comida", "kit de alimento(s)",
-  // "kit de comida", "kit de bebé", "compota(s)".
-  [/\b(?:alimento(?:s)?|comida|compota(?:s)?|kit\s+(?:de\s+)?(?:alimento(?:s)?|comida|beb[eé]))\b/i, "kit_alimento"],
+  // kit_higiene: "kit de aseo personal", "kit aseo", "kit personal",
+  // "kit de artículos personales", "kit higiene", "productos de higiene",
+  // "kit de limpieza", "artículos personales".
+  [/\b(?:kit\s+(?:de\s+)?(?:aseo\s+personal|aseo|personal(?:es)?|higiene|art[íi]culos\s+personales|limpieza)|productos\s+de\s+higiene|art[íi]culos\s+personales)\b/i, "kit_higiene"],
+  // kit_alimento: "alimento(s)", "comida", "kit de alimento(s)",
+  // "kit de alimentación", "kit de comida", "kit de bebé", "compota(s)",
+  // "enlatados", "sardinas", "combo de bebé", "leche".
+  [/\b(?:alimento(?:s)?|comida|compota(?:s)?|enlatados|sardinas|leche|kit\s+(?:de\s+)?(?:alimento(?:s)?|alimentaci[oó]n|comida|beb[eé])|combo\s+de\s+beb[eé])\b/i, "kit_alimento"],
   [/\bpa[ñn]al(?:es)?\b/i, "pañales"],
   [
     /\bmedicament(?:o|os)\b|\bMedicamentos\s+entregados\b|\bkit\s+de\s+medicamentos\b/i,
     "medicamentos",
   ],
-  [/\bprotector\s+cama\b/i, "protector_cama"],
-  // "toalla", "toallita", and "gel" all map to toallas in the source
-  // data (bath kit). Be conservative — explicit "gel antibiótico"
-  // would still match here, but in practice the dataset does not
-  // contain that distinction.
+  // insumos_medicos: inyectadora, tensiómetro, alcohol (when medical context)
+  [/\binyectadora(?:s)?\b|\btensi[oó]metro(?:s)?\b/i, "insumos_medicos"],
+  [/\bprotector\s+cama\b|\bcentro(?:s)?\s+de\s+cama\b/i, "protector_cama"],
   [/\btoalla(?:s|ita)?\b|\bgel\b/i, "toallas"],
   [/\bropa\b|\btalla\b/i, "ropa"],
-  [/\bcolch[oó]n(?:eta)?\b|\bcolchoneta\b/i, "colchoneta"],
+  [/\bzapato(?:s)?\b|\bbotines?\b|\bcalzado\b/i, "calzado"],
+  // colchoneta: also catches "colchón", "colchoneta(s)", "colchonetitas"
+  [/\bcolch[oó]n(?:eta(?:s)?|ita(?:s)?)?\b/i, "colchoneta"],
   [/\bcarpa(?:s)?\b/i, "carpas"],
   [/\bsilla\s+de\s+ruedas?\b/i, "silla_ruedas"],
   [/\bmuleta(?:s)?\b/i, "muletas"],
@@ -110,6 +112,7 @@ const ITEM_PATTERNS: ReadonlyArray<[RegExp, SupplyItem]> = [
 const SPECIALTY_MAP: ReadonlyMap<string, MedicalSpecialty> = new Map([
   ["medicina general", "medicina_general"],
   ["cirugia general", "medicina_general"],
+  ["curas", "medicina_general"],
   ["endocrinologia", "endocrinologia"],
   ["endocrinologia/medicina interna", "endocrinologia"],
   ["fisioterapia", "fisioterapia"],
@@ -228,10 +231,10 @@ export function splitNotes(entries: string): string[] {
 
   const out: string[] = [];
   for (const chunk of firstPass) {
-    // Split further on every "Entrega de suministros:" or
-    // "Atención ...:" boundary that is NOT the start of the chunk.
-    // Use a positive lookbehind so the leading keyword is preserved.
-    const re = /(?<=.)(?=Entrega de suministros\s*:|Atención\s+[^:]+:)/i;
+    // Split further on every "Entrega de suministros:", "Medicamentos
+    // entregados:", "Medicamentos y suministros:", "Acta de entrega",
+    // or "Atención ...:" boundary that is NOT the start of the chunk.
+    const re = /(?<=.)(?=Entrega de suministros\s*:|Medicamentos\s+(?:y\s+suministros\s+)?entregados\s*:|Acta de entrega|Atención\s+[^:]+:)/i;
     const parts = chunk.split(re);
     for (const p of parts) {
       const trimmed = p.trim();
@@ -248,18 +251,19 @@ export function splitNotes(entries: string): string[] {
  */
 export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null {
   if (!line) return null;
-  // Match delivery keyword at the start: "Entrega de suministros:" or
-  // "Medicamentos entregados:". The body is everything after the colon.
-  const re = /^(?:Entrega\s+de\s+suministros|Medicamentos\s+entregados)\s*:\s*(.+)$/i;
+  // Match delivery keywords: "Entrega de suministros:", "Medicamentos
+  // entregados:", "Medicamentos y suministros entregados:", or
+  // "Acta de entrega".
+  const re = /^(?:Entrega\s+de\s+suministros(?:\s+colectiva)?|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:\s*(.+)$/i;
   const m = line.match(re);
   if (!m) return null;
 
-  const isMedicamentosLine = /^Medicamentos\s+entregados\s*:/i.test(line);
+  const isMedicamentosLine = /^(?:Medicamentos\s+(?:y\s+suministros\s+)?entregados)\s*:/i.test(line);
 
   const body = m[1];
   const items = findItemsInText(body);
 
-  // "Medicamentos entregados:" lines always include medicamentos item
+  // "Medicamentos entregados:" lines always include medicamentos item.
   if (isMedicamentosLine && !items.includes("medicamentos" as SupplyItem)) {
     items.push("medicamentos" as SupplyItem);
     items.sort();
@@ -317,9 +321,19 @@ export function parseAttentionLine(
 
   // Pull professional + specialty from the leading "Name (Spec)".
   const profMatch = rest.match(/^\s*([^(]+?)\s*\(([^)]+)\)/);
-  if (!profMatch) return null;
-  const professional = profMatch[1].trim();
-  const specialty = mapSpecialty(profMatch[2]);
+  let professional: string;
+  let specialty: MedicalSpecialty | null;
+  if (profMatch) {
+    professional = profMatch[1].trim();
+    specialty = mapSpecialty(profMatch[2]);
+  } else if (/^Control\s+Medico\s*$/i.test(rest.trim())) {
+    // "Control Medico" without doctor name → default to medicina_general
+    // (Dr. Juan Andrade per domain knowledge).
+    professional = "Dr. Juan Andrade";
+    specialty = "medicina_general";
+  } else {
+    return null;
+  }
 
   const age = extractAge(rest);
   const sexRaw = extractField(rest, "Sexo");
@@ -423,8 +437,9 @@ export function parseNotes(notes: string): ParseOutput {
   const failures: Array<{ line: string; reason: string }> = [];
 
   for (const line of lines) {
-    // Try delivery patterns: "Entrega de suministros:" or "Medicamentos entregados:"
-    if (/^(?:Entrega\s+de\s+suministros|Medicamentos\s+entregados)\s*:/i.test(line)) {
+    // Try delivery patterns: "Entrega de suministros:", "Medicamentos
+    // entregados:", "Medicamentos y suministros:", "Acta de entrega".
+    if (/^(?:Entrega\s+de\s+suministros|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:/i.test(line)) {
       const parsed = parseDeliveryLine(line);
       if (parsed) {
         deliveries.push(parsed);
@@ -442,10 +457,21 @@ export function parseNotes(notes: string): ParseOutput {
       }
       continue;
     }
-    // Lines that match neither keyword are ignored — they are
-    // usually free-text context like an address, phone number, or
-    // a free-form supply note that does not start with the canonical
-    // "Entrega de suministros:" prefix.
+    // Fallback: lines without a known keyword may still contain
+    // catalog items (e.g. "2 kits personales y una caja de agua").
+    // Only try if the line looks like a supply description (contains
+    // catalog keywords) and is not a phone number, address, etc.
+    const fallbackItems = findItemsInText(line);
+    if (fallbackItems.length > 0 && !/^Tlf[.:]|\d{11}/.test(line)) {
+      deliveries.push({
+        items: fallbackItems,
+        isCollective: false,
+        beneficiaryCount: 1,
+        rawLine: `Entrega de suministros: ${line}`,
+      });
+      continue;
+    }
+    // Truly unparseable — free-text context.
   }
 
   return { deliveries, attentions, failures };

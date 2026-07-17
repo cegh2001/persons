@@ -165,7 +165,7 @@ describe("parseDeliveryLine", () => {
   });
 
   it("returns null when no catalog items are recognized", () => {
-    const r = parseDeliveryLine("Entrega de suministros: 1 par de zapatos azules");
+    const r = parseDeliveryLine("Entrega de suministros: solo cosas que no existen en el catalogo xyz123");
     expect(r).toBeNull();
   });
 
@@ -228,8 +228,14 @@ describe("parseAttentionLine", () => {
     expect(r!.diagnosis).toBeNull();
   });
 
+  it("parses 'Control Medico' as medicina_general with Dr. Juan Andrade", () => {
+    const r = parseAttentionLine("Atención médica: Control Medico");
+    expect(r).not.toBeNull();
+    expect(r!.professional).toBe("Dr. Juan Andrade");
+    expect(r!.specialty).toBe("medicina_general");
+  });
+
   it("returns null when no name+specialty parentheses are present", () => {
-    expect(parseAttentionLine("Atención médica: Control Medico")).toBeNull();
     expect(parseAttentionLine("Atención médica: ")).toBeNull();
   });
 
@@ -265,7 +271,7 @@ describe("mapSpecialty", () => {
 
   it("returns null for unknown specialties", () => {
     expect(mapSpecialty("Cirugía General")).toBe("medicina_general");
-    expect(mapSpecialty("Curas")).toBeNull();
+    expect(mapSpecialty("Curas")).toBe("medicina_general");
     expect(mapSpecialty("Medicamentos (Diclofenaco)")).toBeNull();
     expect(mapSpecialty("")).toBeNull();
   });
@@ -300,7 +306,7 @@ describe("parseNotes", () => {
   });
 
   it("flags Entrega lines with no catalog items as failures", () => {
-    const r = parseNotes("Entrega de suministros: 1 par de zapatos azules");
+    const r = parseNotes("Entrega de suministros: solo cosas que no existen en el catalogo xyz123");
     expect(r.deliveries).toEqual([]);
     expect(r.failures).toHaveLength(1);
     expect(r.failures[0].reason).toBe("no_catalog_items");
@@ -313,7 +319,7 @@ describe("parseNotes", () => {
   });
 
   it("flags Atención lines without parentheses as failures", () => {
-    const r = parseNotes("Atención médica: Control Medico");
+    const r = parseNotes("Atención médica: algo sin parentesis ni control medico");
     expect(r.attentions).toEqual([]);
     expect(r.failures).toHaveLength(1);
     expect(r.failures[0].reason).toBe("missing_name_or_specialty");
