@@ -257,7 +257,7 @@ export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null 
   const m = line.match(re);
   if (!m) return null;
 
-  const isMedicamentosLine = /^(?:Medicamentos\s+(?:y\s+suministros\s+)?entregados)\s*:/i.test(line);
+  const isMedicamentosLine = /^Medicamentos\b/i.test(line);
 
   const body = m[1];
   const items = findItemsInText(body);
