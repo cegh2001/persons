@@ -164,7 +164,7 @@ export function CensoStats({
               <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-rose-500/5 to-transparent shadow-sm">
                 <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Atenc. Médica</span>
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Personas conAtenc. Médica</span>
                     <Stethoscope className="size-4 text-rose-600 dark:text-rose-400" />
                   </div>
                   <div className="mt-2">
@@ -287,7 +287,7 @@ export function CensoStats({
         >
           <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Atenc. Médica</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Personas con Atenc. Médica</span>
               <Stethoscope className="size-4 text-rose-600 dark:text-rose-400" />
             </div>
             <div className="mt-2">
