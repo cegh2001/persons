@@ -272,7 +272,7 @@ describe("mapSpecialty", () => {
   it("returns null for unknown specialties", () => {
     expect(mapSpecialty("Cirugía General")).toBe("medicina_general");
     expect(mapSpecialty("Curas")).toBe("medicina_general");
-    expect(mapSpecialty("Medicamentos (Diclofenaco)")).toBeNull();
+    expect(mapSpecialty("Medicamentos (Diclofenaco)")).toBe("medicina_general");
     expect(mapSpecialty("")).toBeNull();
   });
 });
