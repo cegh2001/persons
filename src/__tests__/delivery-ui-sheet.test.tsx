@@ -45,6 +45,7 @@ const mockDeliveriesDefault = {
   error: null as Error | null,
   refetch: vi.fn(),
   createDelivery: vi.fn(),
+  deleteDelivery: vi.fn(),
 };
 
 const mockAttentionsDefault = {
@@ -65,6 +66,7 @@ const mockAttentionsDefault = {
   error: null as Error | null,
   refetch: vi.fn(),
   createAttention: vi.fn(),
+  deleteAttention: vi.fn(),
 };
 
 vi.mock("@/hooks/useDeliveries", () => ({

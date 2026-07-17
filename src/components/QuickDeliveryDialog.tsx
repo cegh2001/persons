@@ -173,31 +173,60 @@ export function QuickDeliveryDialog({
           {/* Person selector */}
           <div className="space-y-1.5">
             <Label htmlFor="qd-person">Persona</Label>
-            <Combobox
-              items={personItems}
-              value={personId !== null ? String(personId) : null}
-              onValueChange={(val) =>
-                setPersonId(val !== null ? Number(val) : null)
-              }
-            >
-              <ComboboxInput
+            {prefillPersonId && selectedPerson ? (
+              <Input
                 id="qd-person"
-                placeholder="Buscar por nombre o cédula..."
-                className="w-full"
-                showTrigger
-                showClear
+                value={
+                  selectedPerson.document_id
+                    ? `${selectedPerson.name} (${selectedPerson.document_id})`
+                    : selectedPerson.name
+                }
+                disabled
+                className="bg-slate-100 dark:bg-slate-800 font-medium text-slate-900 dark:text-slate-100"
               />
-              <ComboboxContent>
-                <ComboboxEmpty>Sin resultados.</ComboboxEmpty>
-                <ComboboxList>
-                  {(item) => (
-                    <ComboboxItem key={item.value} value={item.value}>
-                      {item.label}
-                    </ComboboxItem>
-                  )}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+            ) : (
+              <Combobox
+                items={personItems}
+                value={
+                  selectedPerson
+                    ? selectedPerson.document_id
+                      ? `${selectedPerson.name} (${selectedPerson.document_id})`
+                      : selectedPerson.name
+                    : null
+                }
+                onValueChange={(val) => {
+                  if (!val) {
+                    setPersonId(null);
+                    return;
+                  }
+                  const found = persons.find(
+                    (p) =>
+                      String(p.id) === val ||
+                      p.name === val ||
+                      `${p.name} (${p.document_id})` === val
+                  );
+                  setPersonId(found ? found.id : null);
+                }}
+              >
+                <ComboboxInput
+                  id="qd-person"
+                  placeholder="Buscar por nombre o cédula..."
+                  className="w-full"
+                  showTrigger
+                  showClear
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>Sin resultados.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(item) => (
+                      <ComboboxItem key={item.value} value={item.label}>
+                        {item.label}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            )}
             {selectedPerson && (
               <p className="text-[10px] text-muted-foreground">
                 {selectedPerson.location} ·{" "}

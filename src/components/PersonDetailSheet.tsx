@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   X,
   Package,
@@ -14,6 +14,15 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { useDeliveries } from "@/hooks/useDeliveries";
 import { useMedicalAttentions } from "@/hooks/useMedicalAttentions";
 import type { Person } from "@/types/person";
@@ -122,6 +131,27 @@ export function PersonDetailSheet({
     refetch: refetchAttentions,
     deleteAttention,
   } = useMedicalAttentions(personId);
+
+  const [itemToDelete, setItemToDelete] = useState<{
+    type: "delivery" | "attention";
+    id: number;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    setDeleting(true);
+    try {
+      if (itemToDelete.type === "delivery") {
+        await deleteDelivery(itemToDelete.id);
+      } else {
+        await deleteAttention(itemToDelete.id);
+      }
+      setItemToDelete(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Escape key dismiss.
   useEffect(() => {
@@ -281,11 +311,7 @@ export function PersonDetailSheet({
                             <Button
                               variant="ghost"
                               size="icon-xs"
-                              onClick={() => {
-                                if (window.confirm("¿Seguro que querés eliminar esta entrega?")) {
-                                  deleteDelivery(d.id);
-                                }
-                              }}
+                              onClick={() => setItemToDelete({ type: "delivery", id: d.id })}
                               className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 size-6"
                               title="Eliminar entrega"
                             >
@@ -381,11 +407,7 @@ export function PersonDetailSheet({
                           <Button
                             variant="ghost"
                             size="icon-xs"
-                            onClick={() => {
-                              if (window.confirm("¿Seguro que querés eliminar esta atención médica?")) {
-                                deleteAttention(a.id);
-                              }
-                            }}
+                            onClick={() => setItemToDelete({ type: "attention", id: a.id })}
                             className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 size-6"
                             title="Eliminar atención médica"
                           >
@@ -422,6 +444,40 @@ export function PersonDetailSheet({
           </section>
         </div>
       </aside>
+
+      {/* Confirmation Modal for deleting an item */}
+      <Dialog
+        open={itemToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setItemToDelete(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              {itemToDelete?.type === "delivery"
+                ? "¿Eliminar entrega?"
+                : "¿Eliminar atención médica?"}
+            </DialogTitle>
+            <DialogDescription>
+              {itemToDelete?.type === "delivery"
+                ? "Esta acción eliminará el registro de esta entrega y sus suministros de forma permanente."
+                : "Esta acción eliminará la atención médica registrada de forma permanente."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <DialogClose render={<Button type="button" variant="ghost">Cancelar</Button>} />
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Eliminando..." : "Confirmar Eliminación"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
