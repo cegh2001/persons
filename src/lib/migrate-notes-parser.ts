@@ -85,14 +85,14 @@ const ITEM_PATTERNS: ReadonlyArray<[RegExp, SupplyItem]> = [
   // kit_alimento: "alimento(s)", "comida", "kit de alimento(s)",
   // "kit de alimentación", "kit de comida", "kit de bebé", "compota(s)",
   // "enlatados", "sardinas", "combo de bebé", "leche".
-  [/\b(?:alimento(?:s)?|comida|compota(?:s)?|enlatados|sardinas|leche|kit\s+(?:de\s+)?(?:alimento(?:s)?|alimentaci[oó]n|comida|beb[eé])|combo\s+de\s+beb[eé])\b/i, "kit_alimento"],
-  [/\bpa[ñn]al(?:es)?\b/i, "pañales"],
+  [/\b(?:alimento(?:s)?|comida|compota(?:s)?|enlatados|sardinas|leche|kit\s+(?:de\s+)?(?:alimento(?:s)?|alimentaci[oó]n|comida|beb[eé]|rn)|combo\s+de\s+beb[eé])\b/i, "kit_alimento"],
+  [/\bpa[ñn]al(?:es)?\b|\bkit\s+de\s+rn\b/i, "pañales"],
   [
     /\bmedicament(?:o|os)\b|\bMedicamentos\s+entregados\b|\bkit\s+de\s+medicamentos\b/i,
     "medicamentos",
   ],
-  // insumos_medicos: inyectadora, tensiómetro, alcohol (when medical context)
-  [/\binyectadora(?:s)?\b|\btensi[oó]metro(?:s)?\b/i, "insumos_medicos"],
+  // insumos_medicos: inyectadora, tensiómetro, adhesivo, curitas.
+  [/\binyectadora(?:s)?\b|\btensi[oó]metro(?:s)?\b|\badhesivo\b|\bcuritas?\b/i, "insumos_medicos"],
   [/\bprotector\s+cama\b|\bcentro(?:s)?\s+de\s+cama\b/i, "protector_cama"],
   [/\btoalla(?:s|ita)?\b|\bgel\b/i, "toallas"],
   [/\bropa\b|\btalla\b/i, "ropa"],
@@ -133,7 +133,7 @@ const SPECIALTY_MAP: ReadonlyMap<string, MedicalSpecialty> = new Map([
  *                                                   + the damnificada)
  */
 const COLLECTIVE_HINT_RE =
-  /(\d+)\s+ni[ñn]os?|\b(\d+)\s+(?:Sra?\.?|se[ñn]or(?:a|ito)?|damnificad[ao]s?)\b|damnificad[ao]s?\s+en/gi;
+  /(\d+)\s+ni[ñn]os?|\b(\d+)\s+(?:Sra?\.?|se[ñn]or(?:a|ito)?|damnificad[ao]s?|rescatistas?)\b|damnificad[ao]s?\s+en/gi;
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -269,9 +269,16 @@ export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null 
     items.sort();
   }
 
-  // Detect collective indicators. If found, set isCollective and try
-  // to estimate beneficiary_count. We treat the number preceding the
-  // hint as the headcount; if multiple hints exist we sum them.
+  // Bare "kit" or "kit." → assume kit_alimento (domain knowledge).
+  if (items.length === 0 && /^kit\.?\s*$/i.test(body.trim())) {
+    items.push("kit_alimento" as SupplyItem);
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  // Detect collective indicators.
   let isCollective = false;
   let beneficiaryCount = 1;
   const hintMatches = Array.from(body.matchAll(COLLECTIVE_HINT_RE));
@@ -320,7 +327,7 @@ export function parseAttentionLine(
   const rest = m[2];
 
   // Pull professional + specialty from the leading "Name (Spec)".
-  const profMatch = rest.match(/^\s*([^(]+?)\s*\(([^)]+)\)/);
+  const profMatch = rest.match(/^\s*([^(]+?)\s*\((.+)\)/);
   let professional: string;
   let specialty: MedicalSpecialty | null;
   if (profMatch) {
@@ -359,6 +366,8 @@ export function parseAttentionLine(
 /** Lookup a specialty string against the catalog. */
 export function mapSpecialty(raw: string): MedicalSpecialty | null {
   const norm = normalize(raw);
+  // "Medicamentos (Diclofenaco)" and similar → medicina_general (nursing)
+  if (norm.includes("medicamentos")) return "medicina_general";
   return SPECIALTY_MAP.get(norm) ?? null;
 }
 
@@ -455,6 +464,64 @@ export function parseNotes(notes: string): ParseOutput {
       } else {
         failures.push({ line, reason: "missing_name_or_specialty" });
       }
+      continue;
+    }
+    // Bare medical keywords without "Atención" prefix:
+    // "Fisioterapia: <diagnosis>" → Ft. Catherin Camara
+    // "Psicología: <notes>" → Lic. María José
+    // "Medicina General, <Doctor>" → extract doctor
+    // "Pediatría, <Doctor>" → extract doctor
+    const fisioMatch = line.match(/^Fisioterapia\s*:\s*(.+)$/i);
+    if (fisioMatch) {
+      attentions.push({
+        professional: "Ft. Catherin Camara",
+        specialty: "fisioterapia",
+        date: null,
+        patientAge: null,
+        patientSex: null,
+        diagnosis: fisioMatch[1].trim() || null,
+        rawLine: line,
+      });
+      continue;
+    }
+    const psicoMatch = line.match(/^Psicolog[ií]a\s*:\s*(.*)$/i);
+    if (psicoMatch) {
+      const diagnosis = psicoMatch[1].trim() || null;
+      attentions.push({
+        professional: "Lic. María José",
+        specialty: "psicologia",
+        date: null,
+        patientAge: null,
+        patientSex: null,
+        diagnosis: psicoMatch[1].trim() || null,
+        rawLine: line,
+      });
+      continue;
+    }
+    const medGenMatch = line.match(/^Medicina\s+General\s*[,:]\s*(.+)$/i);
+    if (medGenMatch) {
+      attentions.push({
+        professional: medGenMatch[1].trim(),
+        specialty: "medicina_general",
+        date: null,
+        patientAge: null,
+        patientSex: null,
+        diagnosis: null,
+        rawLine: line,
+      });
+      continue;
+    }
+    const pedMatch = line.match(/^Pediatr[ií]a\s*[,:]\s*(.+)$/i);
+    if (pedMatch) {
+      attentions.push({
+        professional: pedMatch[1].trim(),
+        specialty: "pediatria",
+        date: null,
+        patientAge: null,
+        patientSex: null,
+        diagnosis: null,
+        rawLine: line,
+      });
       continue;
     }
     // Fallback: lines without a known keyword may still contain
