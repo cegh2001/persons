@@ -10,6 +10,7 @@ import {
   CalendarDays,
   UserCheck,
   Hash,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,11 +114,13 @@ export function PersonDetailSheet({
     deliveries,
     loading: loadingDeliveries,
     refetch: refetchDeliveries,
+    deleteDelivery,
   } = useDeliveries(personId);
   const {
     attentions,
     loading: loadingAttentions,
     refetch: refetchAttentions,
+    deleteAttention,
   } = useMedicalAttentions(personId);
 
   // Escape key dismiss.
@@ -269,10 +272,27 @@ export function PersonDetailSheet({
                         >
                           {individual ? "Individual" : "Colectiva"}
                         </Badge>
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <CalendarDays className="size-2.5" />
-                          {formatDate(d.created_at)}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <CalendarDays className="size-2.5" />
+                            {formatDate(d.created_at)}
+                          </span>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              onClick={() => {
+                                if (window.confirm("¿Seguro que querés eliminar esta entrega?")) {
+                                  deleteDelivery(d.id);
+                                }
+                              }}
+                              className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 size-6"
+                              title="Eliminar entrega"
+                            >
+                              <Trash2 className="size-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       {items.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-1">
@@ -352,10 +372,27 @@ export function PersonDetailSheet({
                       >
                         {SPECIALTY_LABELS[a.specialty] ?? a.specialty}
                       </Badge>
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <CalendarDays className="size-2.5" />
-                        {formatDate(a.created_at)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <CalendarDays className="size-2.5" />
+                          {formatDate(a.created_at)}
+                        </span>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => {
+                              if (window.confirm("¿Seguro que querés eliminar esta atención médica?")) {
+                                deleteAttention(a.id);
+                              }
+                            }}
+                            className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 size-6"
+                            title="Eliminar atención médica"
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                       <UserCheck className="size-3 text-slate-400" />

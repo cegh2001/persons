@@ -20,6 +20,7 @@ interface UseMedicalAttentionsResult {
     diagnosis?: string;
     notes?: string;
   }) => Promise<MedicalAttention | null>;
+  deleteAttention: (attentionId: number) => Promise<boolean>;
 }
 
 /**
@@ -102,5 +103,36 @@ export function useMedicalAttentions(
     []
   );
 
-  return { attentions, loading, error, refetch: load, createAttention };
+  const deleteAttention = useCallback(
+    async (attentionId: number): Promise<boolean> => {
+      try {
+        const res = await fetchWithRetry(
+          `/api/medical-attentions/${attentionId}`,
+          { method: "DELETE" }
+        );
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Error" }));
+          toast.error(data.error || "No se pudo eliminar la atención.");
+          return false;
+        }
+        toast.success("Atención médica eliminada correctamente.");
+        setAttentions((prev) => prev.filter((a) => a.id !== attentionId));
+        return true;
+      } catch (err) {
+        console.error("deleteAttention error:", err);
+        toast.error("Error de red al eliminar la atención.");
+        return false;
+      }
+    },
+    []
+  );
+
+  return {
+    attentions,
+    loading,
+    error,
+    refetch: load,
+    createAttention,
+    deleteAttention,
+  };
 }

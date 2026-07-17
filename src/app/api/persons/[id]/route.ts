@@ -133,6 +133,16 @@ export async function DELETE(
     if (err instanceof ZodError) {
       return NextResponse.json({ error: "ID inválido" }, { status: 400 });
     }
+    const errStr = String(err);
+    if (errStr.includes("FOREIGN KEY") || errStr.includes("foreign key")) {
+      return NextResponse.json(
+        {
+          error:
+            "No se puede eliminar la persona porque tiene entregas o atenciones médicas asociadas. Primero debés eliminar sus entregas o atenciones desde el detalle del usuario.",
+        },
+        { status: 400 }
+      );
+    }
     console.error("Error deleting person:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

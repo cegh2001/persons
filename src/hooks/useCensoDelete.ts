@@ -33,6 +33,12 @@ export function useCensoDelete(
       if (res.ok) {
         closeDelete();
         onDataChanged();
+        toast.success("Persona eliminada correctamente.");
+      } else {
+        const data = await res.json().catch(() => ({ error: "No se pudo eliminar el registro." }));
+        toast.error(data.error || "No se pudo eliminar el registro.", {
+          duration: 6000,
+        });
       }
     } catch (err) {
       console.error("Error deleting person:", err);

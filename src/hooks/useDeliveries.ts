@@ -14,6 +14,7 @@ interface UseDeliveriesResult {
     beneficiary_count?: number;
     items?: string[];
   }) => Promise<Delivery | null>;
+  deleteDelivery: (deliveryId: number) => Promise<boolean>;
 }
 
 /**
@@ -93,5 +94,28 @@ export function useDeliveries(personId: number | null): UseDeliveriesResult {
     []
   );
 
-  return { deliveries, loading, error, refetch: load, createDelivery };
+  const deleteDelivery = useCallback(
+    async (deliveryId: number): Promise<boolean> => {
+      try {
+        const res = await fetchWithRetry(`/api/deliveries/${deliveryId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Error" }));
+          toast.error(data.error || "No se pudo eliminar la entrega.");
+          return false;
+        }
+        toast.success("Entrega eliminada correctamente.");
+        setDeliveries((prev) => prev.filter((d) => d.id !== deliveryId));
+        return true;
+      } catch (err) {
+        console.error("deleteDelivery error:", err);
+        toast.error("Error de red al eliminar la entrega.");
+        return false;
+      }
+    },
+    []
+  );
+
+  return { deliveries, loading, error, refetch: load, createDelivery, deleteDelivery };
 }
