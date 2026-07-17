@@ -363,7 +363,7 @@ export function CensoStats({
 
       {/* ── New structured-deliveries KPIs ─────────────────────────── */}
       <div className="mt-6 pt-4 border-t border-slate-200/60 dark:border-slate-800/60">
-        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-600">Registro estructurado</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-600">Registro estructurado EN CONSTRUCCION, ESTADO BETA</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
         <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent shadow-sm">
