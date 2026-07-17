@@ -248,13 +248,22 @@ export function splitNotes(entries: string): string[] {
  */
 export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null {
   if (!line) return null;
-  // Match the keyword at the start of the line (case-insensitive).
-  const re = /^Entrega\s+de\s+suministros\s*:\s*(.+)$/i;
+  // Match delivery keyword at the start: "Entrega de suministros:" or
+  // "Medicamentos entregados:". The body is everything after the colon.
+  const re = /^(?:Entrega\s+de\s+suministros|Medicamentos\s+entregados)\s*:\s*(.+)$/i;
   const m = line.match(re);
   if (!m) return null;
 
+  const isMedicamentosLine = /^Medicamentos\s+entregados\s*:/i.test(line);
+
   const body = m[1];
   const items = findItemsInText(body);
+
+  // "Medicamentos entregados:" lines always include medicamentos item
+  if (isMedicamentosLine && !items.includes("medicamentos" as SupplyItem)) {
+    items.push("medicamentos" as SupplyItem);
+    items.sort();
+  }
 
   // Detect collective indicators. If found, set isCollective and try
   // to estimate beneficiary_count. We treat the number preceding the
@@ -270,7 +279,7 @@ export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null 
     }
     if (nums.length > 0) {
       isCollective = true;
-      beneficiaryCount = nums.reduce((a, b) => a + b, 0);
+      beneficiaryCount = Math.min(nums.reduce((a, b) => a + b, 0), 1000);
     } else if (/damnificad[ao]s?\s+en/i.test(body)) {
       // "para una damnificada en Calle del Hambre" — at least 2
       // persons (the note's author + the damnificada). The note is
@@ -414,9 +423,8 @@ export function parseNotes(notes: string): ParseOutput {
   const failures: Array<{ line: string; reason: string }> = [];
 
   for (const line of lines) {
-    // Try the delivery regex first. The Atención regex starts with
-    // the literal "Atención" so they cannot both match.
-    if (/^Entrega\s+de\s+suministros\s*:/i.test(line)) {
+    // Try delivery patterns: "Entrega de suministros:" or "Medicamentos entregados:"
+    if (/^(?:Entrega\s+de\s+suministros|Medicamentos\s+entregados)\s*:/i.test(line)) {
       const parsed = parseDeliveryLine(line);
       if (parsed) {
         deliveries.push(parsed);

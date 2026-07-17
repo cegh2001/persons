@@ -123,12 +123,17 @@ function rowToDeliveryWithItems(
  */
 export async function createDelivery(
   personId: number,
-  type: "individual" | "collective",
+  deliveryType: "individual" | "collective",
   beneficiaryCount?: number,
   items?: string[]
 ): Promise<DeliveryRow> {
-  const db = await getDb();
   const count = beneficiaryCount ?? 1;
+  // Sanity cap: collective deliveries cannot exceed 10000 persons.
+  if (deliveryType === "collective" && count > 10000) {
+    throw new DeliveryValidationError(
+      `El número de personas alcanzadas (${count}) excede el límite permitido (10 000).`
+    );
+  }
   const safeCount = type === "individual" ? 1 : count;
   const itemList = items ?? [];
 
@@ -238,6 +243,12 @@ export async function updateDelivery(
     delivery_type === "individual"
       ? 1
       : partial.beneficiary_count ?? existing.beneficiary_count;
+
+  if (delivery_type === "collective" && beneficiary_count > 10000) {
+    throw new DeliveryValidationError(
+      `El número de personas alcanzadas (${beneficiary_count}) excede el límite permitido (10 000).`
+    );
+  }
 
   await db.execute({
     sql: "UPDATE deliveries SET delivery_type = ?, beneficiary_count = ? WHERE id = ?",

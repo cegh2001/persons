@@ -133,6 +133,31 @@ describe("parseDeliveryLine", () => {
     expect(r!.beneficiaryCount).toBeGreaterThanOrEqual(2);
   });
 
+  it("parses 'Medicamentos entregados:' as a delivery", () => {
+    const r = parseDeliveryLine(
+      "Medicamentos entregados: Diclofenac Potásico, Acetaminofén."
+    );
+    expect(r).not.toBeNull();
+    expect(r!.items).toContain("medicamentos");
+  });
+
+  it("detects '2 veces' pattern (multiplier noted, single delivery created)", () => {
+    const r = parseDeliveryLine(
+      "Entrega de suministros: agua, Electrolit, etc. 2 veces"
+    );
+    expect(r).not.toBeNull();
+    expect(r!.items).toEqual(["agua", "electrolit"]);
+  });
+
+  it("caps beneficiary_count at 1000", () => {
+    const r = parseDeliveryLine(
+      "Entrega de suministros: agua para 1500 damnificados en Calle"
+    );
+    expect(r).not.toBeNull();
+    expect(r!.isCollective).toBe(true);
+    expect(r!.beneficiaryCount).toBeLessThanOrEqual(1000);
+  });
+
   it("returns null when the line is not a delivery", () => {
     expect(parseDeliveryLine("Atención médica: Dr. X (Medicina General)")).toBeNull();
     expect(parseDeliveryLine("Tlf: 04141234567")).toBeNull();
@@ -279,6 +304,12 @@ describe("parseNotes", () => {
     expect(r.deliveries).toEqual([]);
     expect(r.failures).toHaveLength(1);
     expect(r.failures[0].reason).toBe("no_catalog_items");
+  });
+
+  it("parses 'Medicamentos entregados:' as a delivery", () => {
+    const r = parseNotes("Medicamentos entregados: Diclofenac Potásico, Acetaminofén.");
+    expect(r.deliveries).toHaveLength(1);
+    expect(r.deliveries[0].items).toContain("medicamentos");
   });
 
   it("flags Atención lines without parentheses as failures", () => {
