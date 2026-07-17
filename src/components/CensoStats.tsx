@@ -362,7 +362,7 @@ export function CensoStats({
       </div>
 
       {/* ── New structured-deliveries KPIs ─────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
         <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent shadow-sm">
           <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
             <div className="flex items-center justify-between">
@@ -374,7 +374,7 @@ export function CensoStats({
                 {stats?.totalDeliveries ?? 0}
               </span>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                <span>registradas en total</span>
+                <span>entregas registradas</span>
               </p>
             </div>
           </CardContent>
@@ -416,7 +416,7 @@ export function CensoStats({
       </div>
 
       {/* ── Top items + Specialties ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-6">
         <Card className="border-slate-200/60 dark:border-slate-800/60 shadow-sm">
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -430,7 +430,7 @@ export function CensoStats({
             </div>
             {topItems.length === 0 ? (
               <p className="text-[10px] text-muted-foreground italic">
-                Sin datos de entregas todavía.
+                Sin entregas registradas aún.
               </p>
             ) : (
               <ul className="space-y-2">

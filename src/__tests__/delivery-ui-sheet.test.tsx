@@ -401,7 +401,7 @@ describe("CensoStats extended fields", () => {
       />
     );
     // Empty-state copy.
-    expect(screen.getByText(/Sin datos de entregas/i)).toBeTruthy();
+    expect(screen.getByText(/Sin entregas registradas aún/i)).toBeTruthy();
     expect(screen.getByText(/Sin atenciones registradas/i)).toBeTruthy();
   });
 
