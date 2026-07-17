@@ -448,7 +448,7 @@ export function parseNotes(notes: string): ParseOutput {
   for (const line of lines) {
     // Try delivery patterns: "Entrega de suministros:", "Medicamentos
     // entregados:", "Medicamentos y suministros:", "Acta de entrega".
-    if (/^(?:Entrega\s+de\s+suministros|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:/i.test(line)) {
+    if (/^(?:Entrega\s+de\s+suministros(?:\s+colectiva)?|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:/i.test(line)) {
       const parsed = parseDeliveryLine(line);
       if (parsed) {
         deliveries.push(parsed);
