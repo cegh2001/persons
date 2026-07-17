@@ -266,7 +266,7 @@ export function CensoStats({
             <div className="mt-2">
               <span className="text-2xl font-bold tracking-tight">{stats?.suppliesTotal || 0}</span>
               <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-between">
-                <span>con entrega</span>
+                <span>con flag de entrega</span>
                 {suppliesFilter === "yes" && (
                   <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">Filtrado</span>
                 )}
@@ -293,7 +293,7 @@ export function CensoStats({
             <div className="mt-2">
               <span className="text-2xl font-bold tracking-tight">{stats?.medicalTotal || 0}</span>
               <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center justify-between">
-                <span>atendidos</span>
+                <span>con flag de atención</span>
                 {medicalFilter === "yes" && (
                   <span className="text-[9px] font-bold text-rose-600 dark:text-rose-400">Filtrado</span>
                 )}
@@ -362,7 +362,10 @@ export function CensoStats({
       </div>
 
       {/* ── New structured-deliveries KPIs ─────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+      <div className="mt-6 pt-4 border-t border-slate-200/60 dark:border-slate-800/60">
+        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-600">Registro estructurado</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
         <Card className="border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-br from-indigo-500/5 to-transparent shadow-sm">
           <CardContent className="p-4 flex flex-col justify-between h-full min-h-24">
             <div className="flex items-center justify-between">
@@ -374,7 +377,11 @@ export function CensoStats({
                 {stats?.totalDeliveries ?? 0}
               </span>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                <span>entregas registradas</span>
+                {stats?.totalDeliveries ? (
+                  <span>entregas registradas</span>
+                ) : (
+                  <span className="italic">sin entregas aún — ejecutar migración</span>
+                )}
               </p>
             </div>
           </CardContent>
@@ -391,7 +398,11 @@ export function CensoStats({
                 {stats?.personsReached ?? 0}
               </span>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                <span>individuales + colectivas</span>
+                {stats?.personsReached ? (
+                  <span>individuales + colectivas</span>
+                ) : (
+                  <span className="italic">sin datos aún</span>
+                )}
               </p>
             </div>
           </CardContent>
@@ -408,7 +419,11 @@ export function CensoStats({
                 {stats?.totalMedicalAttentions ?? 0}
               </span>
               <p className="text-[10px] text-muted-foreground mt-0.5">
-                <span>consultas registradas</span>
+                {stats?.totalMedicalAttentions ? (
+                  <span>consultas registradas</span>
+                ) : (
+                  <span className="italic">sin consultas aún — ejecutar migración</span>
+                )}
               </p>
             </div>
           </CardContent>
