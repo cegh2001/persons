@@ -134,12 +134,12 @@ export async function createDelivery(
       `El número de personas alcanzadas (${count}) excede el límite permitido (10 000).`
     );
   }
-  const safeCount = type === "individual" ? 1 : count;
+  const safeCount = deliveryType === "individual" ? 1 : count;
   const itemList = items ?? [];
 
   const insertRes = await db.execute({
     sql: "INSERT INTO deliveries (person_id, delivery_type, beneficiary_count) VALUES (?, ?, ?) RETURNING *",
-    args: [personId, type, safeCount],
+    args: [personId, deliveryType, safeCount],
   });
   const row = insertRes.rows[0] as unknown as DeliveryRow;
 
