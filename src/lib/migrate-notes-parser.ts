@@ -274,6 +274,12 @@ export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null 
     items.push("kit_alimento" as SupplyItem);
   }
 
+  // "(Firma registrada)" → assume basic delivery (kit_alimento + kit_higiene).
+  if (items.length === 0 && /^\(?Firma\s+registrada\)?\s*$/i.test(body.trim())) {
+    items.push("kit_alimento" as SupplyItem, "kit_higiene" as SupplyItem);
+    items.sort();
+  }
+
   if (items.length === 0) {
     return null;
   }
