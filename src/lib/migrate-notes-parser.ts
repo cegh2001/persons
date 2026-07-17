@@ -295,7 +295,11 @@ export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null 
     }
     if (nums.length > 0) {
       isCollective = true;
-      beneficiaryCount = Math.min(nums.reduce((a, b) => a + b, 0), 1000);
+      // Filter out phone numbers (8+ digits) from the beneficiary count.
+      const realNums = nums.filter((n) => n < 10000);
+      beneficiaryCount = realNums.length > 0
+        ? Math.min(realNums.reduce((a, b) => a + b, 0), 1000)
+        : 2; // fallback: at least 2 if collective hints exist
     } else if (/damnificad[ao]s?\s+en/i.test(body)) {
       // "para una damnificada en Calle del Hambre" — at least 2
       // persons (the note's author + the damnificada). The note is
