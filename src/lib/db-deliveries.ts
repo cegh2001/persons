@@ -127,6 +127,7 @@ export async function createDelivery(
   beneficiaryCount?: number,
   items?: string[]
 ): Promise<DeliveryRow> {
+  const db = await getDb();
   const count = beneficiaryCount ?? 1;
   // Sanity cap: collective deliveries cannot exceed 10000 persons.
   if (deliveryType === "collective" && count > 10000) {
