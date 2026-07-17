@@ -251,10 +251,9 @@ export function splitNotes(entries: string): string[] {
  */
 export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null {
   if (!line) return null;
-  // Match delivery keywords: "Entrega de suministros:", "Medicamentos
-  // entregados:", "Medicamentos y suministros entregados:", or
-  // "Acta de entrega".
-  const re = /^(?:Entrega\s+de\s+suministros(?:\s+colectiva)?|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:\s*(.+)$/i;
+  // Match delivery keywords. Also handle "Entrega de suministros" without
+  // colon — some notes use "Entrega de suministros (items)" format.
+  const re = /^(?:Entrega\s+de\s+suministros(?:\s+colectiva)?|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:?\s*(.+)$/i;
   const m = line.match(re);
   if (!m) return null;
 
@@ -454,7 +453,7 @@ export function parseNotes(notes: string): ParseOutput {
   for (const line of lines) {
     // Try delivery patterns: "Entrega de suministros:", "Medicamentos
     // entregados:", "Medicamentos y suministros:", "Acta de entrega".
-    if (/^(?:Entrega\s+de\s+suministros(?:\s+colectiva)?|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:/i.test(line)) {
+    if (/^(?:Entrega\s+de\s+suministros(?:\s+colectiva)?|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:?/i.test(line)) {
       const parsed = parseDeliveryLine(line);
       if (parsed) {
         deliveries.push(parsed);
