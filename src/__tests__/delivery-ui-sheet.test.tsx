@@ -350,7 +350,7 @@ describe("CensoStats extended fields", () => {
     );
     expect(screen.getByText("Ítems más entregados")).toBeTruthy();
     // Top 5 items, sorted by count desc.
-    const labels = ["Agua", "Kit de alimento", "Electrolit", "Kit de higiene", "Medicamentos"];
+    const labels = ["Agua", "Kit de alimento", "Electrolit", "Kit de aseo/higiene", "Medicamentos"];
     for (const l of labels) {
       expect(screen.getByText(l)).toBeTruthy();
     }

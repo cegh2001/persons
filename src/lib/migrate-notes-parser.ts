@@ -221,21 +221,41 @@ export function splitNotes(entries: string): string[] {
   // First, normalize newlines so the regex below is consistent.
   const normalized = entries.replace(/\r\n?/g, "\n");
 
-  // Split on ` | ` and on `\n`. Then re-split each resulting chunk
-  // on every `Entrega de suministros:` boundary so concatenated
-  // entries are recovered.
-  const firstPass = normalized
-    .split(/\s*\|\s*|\n+/)
+  // Step 1: Split on newlines first to get logical lines.
+  const lines = normalized
+    .split(/\n+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
+  // Step 2: For each line, split on ` | ` ONLY when the line does NOT
+  // start with a medical-attention keyword. Medical attention lines use
+  // `|` as a field separator (Fecha, Edad, Sexo, Diagnóstico) and must
+  // stay intact so parseAttentionLine can extract all metadata.
+  const isMedicalLine = (s: string): boolean =>
+    /^(?:Atenci[oó]n\s+|Medicina\s+General|Psicolog[ií]a\s*:|Fisioterapia\s*:)/i.test(s);
+
+  const firstPass: string[] = [];
+  for (const line of lines) {
+    if (isMedicalLine(line)) {
+      firstPass.push(line);
+    } else {
+      const parts = line.split(/\s*\|\s*/);
+      for (const p of parts) {
+        const trimmed = p.trim();
+        if (trimmed.length > 0) firstPass.push(trimmed);
+      }
+    }
+  }
+
+  // Step 3: Re-split chunks on every delivery / medical keyword boundary.
+  // The regex uses flexible character classes to handle common typos and
+  // accent variations (e.g. "suminisitros", "suministros" without tilde).
+  const boundaryRe =
+    /(?<=.)(?=Entrega\s+de\s+sumin[ií]s[ií]?tr[oó]s?\s*:|Medicamentos\s+(?:y\s+sumin[ií]s[ií]?tr[oó]s?\s+)?entregados\s*:|Acta\s+de\s+entrega|Atenci[oó]n\s+[^:]+:)/i;
+
   const out: string[] = [];
   for (const chunk of firstPass) {
-    // Split further on every "Entrega de suministros:", "Medicamentos
-    // entregados:", "Medicamentos y suministros:", "Acta de entrega",
-    // or "Atención ...:" boundary that is NOT the start of the chunk.
-    const re = /(?<=.)(?=Entrega de suministros\s*:|Medicamentos\s+(?:y\s+suministros\s+)?entregados\s*:|Acta de entrega|Atención\s+[^:]+:)/i;
-    const parts = chunk.split(re);
+    const parts = chunk.split(boundaryRe);
     for (const p of parts) {
       const trimmed = p.trim();
       if (trimmed.length > 0) out.push(trimmed);
@@ -253,7 +273,7 @@ export function parseDeliveryLine(line: string): ParsedDeliveryCandidate | null 
   if (!line) return null;
   // Match delivery keywords. Also handle "Entrega de suministros" without
   // colon — some notes use "Entrega de suministros (items)" format.
-  const re = /^(?:Entrega\s+de\s+suministros(?:\s+colectiva)?|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:?\s*(.+)$/i;
+  const re = /^(?:Entrega\s+de\s+sumin[ií]s[ií]?tr[oó]s?(?:\s+colectiva)?|Medicamentos\s+(?:y\s+sumin[ií]s[ií]?tr[oó]s?\s+)?entregados|Acta\s+de\s+entrega)\s*:?\s*(.+)$/i;
   const m = line.match(re);
   if (!m) return null;
 
@@ -457,7 +477,7 @@ export function parseNotes(notes: string): ParseOutput {
   for (const line of lines) {
     // Try delivery patterns: "Entrega de suministros:", "Medicamentos
     // entregados:", "Medicamentos y suministros:", "Acta de entrega".
-    if (/^(?:Entrega\s+de\s+suministros(?:\s+colectiva)?|Medicamentos\s+(?:y\s+suministros\s+)?entregados|Acta\s+de\s+entrega)\s*:?/i.test(line)) {
+    if (/^(?:Entrega\s+de\s+sumin[ií]s[ií]?tr[oó]s?(?:\s+colectiva)?|Medicamentos\s+(?:y\s+sumin[ií]s[ií]?tr[oó]s?\s+)?entregados|Acta\s+de\s+entrega)\s*:?/i.test(line)) {
       const parsed = parseDeliveryLine(line);
       if (parsed) {
         deliveries.push(parsed);

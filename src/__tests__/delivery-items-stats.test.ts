@@ -98,7 +98,7 @@ beforeAll(async () => {
     "INSERT INTO persons (id, raw_name, name, document_id, location) VALUES (3, 'Carol 333', 'Carol', '333', 'L3')"
   );
 
-  // Alice received agua + kit_aseo
+  // Alice received agua + kit_higiene
   await db.execute(
     "INSERT INTO deliveries (id, person_id, delivery_type) VALUES (1, 1, 'individual')"
   );
@@ -106,15 +106,15 @@ beforeAll(async () => {
     "INSERT INTO delivery_items (delivery_id, item) VALUES (1, 'agua')"
   );
   await db.execute(
-    "INSERT INTO delivery_items (delivery_id, item) VALUES (1, 'kit_aseo')"
+    "INSERT INTO delivery_items (delivery_id, item) VALUES (1, 'kit_higiene')"
   );
 
-  // Bob received only kit_aseo
+  // Bob received only kit_higiene
   await db.execute(
     "INSERT INTO deliveries (id, person_id, delivery_type) VALUES (2, 2, 'individual')"
   );
   await db.execute(
-    "INSERT INTO delivery_items (delivery_id, item) VALUES (2, 'kit_aseo')"
+    "INSERT INTO delivery_items (delivery_id, item) VALUES (2, 'kit_higiene')"
   );
 
   // Carol: no deliveries

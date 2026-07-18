@@ -37,10 +37,9 @@ interface QuickDeliveryDialogProps {
 const SUPPLY_LABELS: Record<SupplyItem, string> = {
   agua: "Agua",
   electrolit: "Electrolit",
-  kit_aseo: "Kit de aseo",
   kit_alimento: "Kit de alimento",
   pañales: "Pañales",
-  kit_higiene: "Kit de higiene",
+  kit_higiene: "Kit de aseo/higiene",
   medicamentos: "Medicamentos",
   insumos_medicos: "Insumos médicos",
   ropa: "Ropa",

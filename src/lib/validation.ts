@@ -29,7 +29,6 @@ export type DeliveryType = z.infer<typeof deliveryTypeSchema>;
 export const SUPPLY_ITEMS = [
   "agua",
   "electrolit",
-  "kit_aseo",
   "kit_alimento",
   "pañales",
   "kit_higiene",

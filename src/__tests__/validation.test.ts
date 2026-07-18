@@ -41,11 +41,10 @@ describe("DELIVERY_TYPES catalog", () => {
 });
 
 describe("SUPPLY_ITEMS catalog", () => {
-  it("exports exactly 18 supply items in the expected order", () => {
+  it("exports exactly 17 supply items in the expected order", () => {
     expect([...SUPPLY_ITEMS]).toEqual([
       "agua",
       "electrolit",
-      "kit_aseo",
       "kit_alimento",
       "pañales",
       "kit_higiene",
@@ -66,7 +65,6 @@ describe("SUPPLY_ITEMS catalog", () => {
   it.each([
     "agua",
     "electrolit",
-    "kit_aseo",
     "kit_alimento",
     "pañales",
     "kit_higiene",
