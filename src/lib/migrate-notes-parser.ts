@@ -102,6 +102,8 @@ const ITEM_PATTERNS: ReadonlyArray<[RegExp, SupplyItem]> = [
   [/\bcarpa(?:s)?\b/i, "carpas"],
   [/\bsilla\s+de\s+ruedas?\b/i, "silla_ruedas"],
   [/\bmuleta(?:s)?\b/i, "muletas"],
+  // kit_emergencia: "combo emergencia", "kit emergencia", "kit de emergencia"
+  [/\b(?:kit|combo)\s+(?:de\s+)?emergencia\b/i, "kit_emergencia"],
 ];
 
 /**

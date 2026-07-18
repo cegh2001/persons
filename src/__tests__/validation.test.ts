@@ -41,7 +41,7 @@ describe("DELIVERY_TYPES catalog", () => {
 });
 
 describe("SUPPLY_ITEMS catalog", () => {
-  it("exports exactly 17 supply items in the expected order", () => {
+  it("exports exactly 18 supply items in the expected order", () => {
     expect([...SUPPLY_ITEMS]).toEqual([
       "agua",
       "electrolit",
@@ -58,6 +58,7 @@ describe("SUPPLY_ITEMS catalog", () => {
       "carpas",
       "silla_ruedas",
       "muletas",
+      "kit_emergencia",
       "otros",
     ]);
   });
@@ -78,6 +79,7 @@ describe("SUPPLY_ITEMS catalog", () => {
     "carpas",
     "silla_ruedas",
     "muletas",
+    "kit_emergencia",
     "otros",
   ] as const)("supplyItemSchema accepts '%s'", (item) => {
     const result = supplyItemSchema.safeParse(item);
