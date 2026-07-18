@@ -50,6 +50,7 @@ const SUPPLY_LABELS: Record<SupplyItem, string> = {
   carpas: "Carpas",
   silla_ruedas: "Silla de ruedas",
   muletas: "Muletas",
+  kit_emergencia: "Kit de emergencia",
   otros: "Otros",
 };
 
