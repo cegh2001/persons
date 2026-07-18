@@ -42,6 +42,7 @@ export const SUPPLY_ITEMS = [
   "carpas",
   "silla_ruedas",
   "muletas",
+  "kit_bebe",
   "kit_emergencia",
   "otros",
 ] as const;

@@ -83,10 +83,12 @@ const ITEM_PATTERNS: ReadonlyArray<[RegExp, SupplyItem]> = [
   // "kit de limpieza", "artículos personales".
   [/\b(?:kit\s+(?:de\s+)?(?:aseo\s+personal|aseo|personal(?:es)?|higiene|art[íi]culos\s+personales|limpieza)|productos\s+de\s+higiene|art[íi]culos\s+personales)\b/i, "kit_higiene"],
   // kit_alimento: "alimento(s)", "comida", "kit de alimento(s)",
-  // "kit de alimentación", "kit de comida", "kit de bebé", "compota(s)",
-  // "enlatados", "sardinas", "combo de bebé", "leche".
-  [/\b(?:alimento(?:s)?|comida|compota(?:s)?|enlatados|sardinas|leche|kit\s+(?:de\s+)?(?:alimento(?:s)?|alimentaci[oó]n|comida|beb[eé]|rn)|combo\s+de\s+beb[eé])\b/i, "kit_alimento"],
-  [/\bpa[ñn]al(?:es)?\b|\bkit\s+de\s+rn\b/i, "pañales"],
+  // "kit de alimentación", "kit de comida", "enlatados", "sardinas".
+  [/\b(?:alimento(?:s)?|comida|enlatados|sardinas|kit\s+(?:de\s+)?(?:alimento(?:s)?|alimentaci[oó]n|comida))\b/i, "kit_alimento"],
+  // kit_bebe: "compota(s)", "leche", "kit de bebé", "kit bebé",
+  // "combo de bebé", "combo bebé", "kit de rn", "kit rn".
+  [/\b(?:compota(?:s)?|leche|(?:kit|combo)\s+(?:de\s+)?(?:beb[eé]|rn))\b/i, "kit_bebe"],
+  [/\bpa[ñn]al(?:es)?\b/i, "pañales"],
   [
     /\bmedicament(?:o|os)\b|\bMedicamentos\s+entregados\b|\bkit\s+de\s+medicamentos\b/i,
     "medicamentos",
