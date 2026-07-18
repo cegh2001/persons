@@ -11,6 +11,7 @@ import {
   UserCheck,
   Hash,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { useDeliveries } from "@/hooks/useDeliveries";
 import { useMedicalAttentions } from "@/hooks/useMedicalAttentions";
-import type { Person } from "@/types/person";
+import type { Person, Delivery } from "@/types/person";
 
 interface PersonDetailSheetProps {
   person: Person | null;
@@ -33,7 +34,9 @@ interface PersonDetailSheetProps {
   onClose: () => void;
   role: "admin" | "visor";
   onNewDelivery: (personId: number) => void;
+  onEditDelivery: (delivery: Delivery) => void;
   onNewAttention: (personId: number) => void;
+  refreshKey?: number;
 }
 
 // ── Tiny inline skeleton (no boneyard bone registered for these) ──────
@@ -78,6 +81,8 @@ const SUPPLY_LABELS: Record<string, string> = {
   carpas: "Carpas",
   silla_ruedas: "Silla de ruedas",
   muletas: "Muletas",
+  kit_bebe: "Kit de bebé",
+  kit_emergencia: "Kit de emergencia",
   otros: "Otros",
 };
 
@@ -113,7 +118,9 @@ export function PersonDetailSheet({
   onClose,
   role,
   onNewDelivery,
+  onEditDelivery,
   onNewAttention,
+  refreshKey,
 }: PersonDetailSheetProps) {
   const personId = person?.id ?? null;
   const isAdmin = role === "admin";
@@ -181,6 +188,16 @@ export function PersonDetailSheet({
       refetchAttentions();
     }
   }, [isOpen, personId, refetchDeliveries, refetchAttentions]);
+
+  // Refetch when a delivery / attention is created or edited while the
+  // sheet is already open (triggered via `refreshKey` from the parent).
+  useEffect(() => {
+    if (isOpen && personId !== null && refreshKey !== undefined && refreshKey > 0) {
+      refetchDeliveries();
+      refetchAttentions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   if (!person) return null;
 
@@ -307,15 +324,26 @@ export function PersonDetailSheet({
                             {formatDate(d.created_at)}
                           </span>
                           {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              onClick={() => setItemToDelete({ type: "delivery", id: d.id })}
-                              className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 size-6"
-                              title="Eliminar entrega"
-                            >
-                              <Trash2 className="size-3" />
-                            </Button>
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() => onEditDelivery(d)}
+                                className="text-indigo-600/70 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400/70 dark:hover:text-indigo-300 dark:hover:bg-indigo-950/50 size-6"
+                                title="Editar entrega"
+                              >
+                                <Pencil className="size-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() => setItemToDelete({ type: "delivery", id: d.id })}
+                                className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 size-6"
+                                title="Eliminar entrega"
+                              >
+                                <Trash2 className="size-3" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>

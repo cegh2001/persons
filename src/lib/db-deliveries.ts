@@ -227,7 +227,11 @@ export async function listDeliveries(
 
 export async function updateDelivery(
   id: number,
-  partial: { delivery_type?: "individual" | "collective"; beneficiary_count?: number }
+  partial: {
+    delivery_type?: "individual" | "collective";
+    beneficiary_count?: number;
+    items?: string[];
+  }
 ): Promise<DeliveryRow | undefined> {
   const db = await getDb();
   const existingRes = await db.execute({
@@ -251,10 +255,38 @@ export async function updateDelivery(
     );
   }
 
-  await db.execute({
-    sql: "UPDATE deliveries SET delivery_type = ?, beneficiary_count = ? WHERE id = ?",
-    args: [delivery_type, beneficiary_count, id],
-  });
+  // Use a transaction when items are also being updated so the delivery
+  // row and its items stay consistent.
+  if (partial.items !== undefined) {
+    const tx = await db.transaction("write");
+    try {
+      await tx.execute({
+        sql: "UPDATE deliveries SET delivery_type = ?, beneficiary_count = ? WHERE id = ?",
+        args: [delivery_type, beneficiary_count, id],
+      });
+      // Replace strategy: delete existing items, insert new ones.
+      await tx.execute({
+        sql: "DELETE FROM delivery_items WHERE delivery_id = ?",
+        args: [id],
+      });
+      for (const item of partial.items) {
+        await tx.execute({
+          sql: "INSERT INTO delivery_items (delivery_id, item) VALUES (?, ?)",
+          args: [id, item],
+        });
+      }
+      await tx.commit();
+    } catch (err) {
+      try { await tx.rollback(); } catch { /* ignore */ }
+      throw err;
+    }
+  } else {
+    await db.execute({
+      sql: "UPDATE deliveries SET delivery_type = ?, beneficiary_count = ? WHERE id = ?",
+      args: [delivery_type, beneficiary_count, id],
+    });
+  }
+
   const res = await db.execute({
     sql: "SELECT * FROM deliveries WHERE id = ?",
     args: [id],

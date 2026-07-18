@@ -88,11 +88,13 @@ export async function PATCH(
     const updateData: {
       delivery_type?: "individual" | "collective";
       beneficiary_count?: number;
+      items?: string[];
     } = {};
     if (parsed.delivery_type !== undefined) updateData.delivery_type = parsed.delivery_type;
     if (parsed.beneficiary_count !== undefined) {
       updateData.beneficiary_count = parsed.beneficiary_count;
     }
+    if (parsed.items !== undefined) updateData.items = parsed.items;
 
     const updated = await updateDelivery(parsedId, updateData);
     if (!updated) {

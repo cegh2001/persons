@@ -14,6 +14,14 @@ interface UseDeliveriesResult {
     beneficiary_count?: number;
     items?: string[];
   }) => Promise<Delivery | null>;
+  updateDelivery: (
+    deliveryId: number,
+    payload: {
+      delivery_type?: "individual" | "collective";
+      beneficiary_count?: number;
+      items?: string[];
+    }
+  ) => Promise<Delivery | null>;
   deleteDelivery: (deliveryId: number) => Promise<boolean>;
 }
 
@@ -94,6 +102,42 @@ export function useDeliveries(personId: number | null): UseDeliveriesResult {
     []
   );
 
+  const updateDelivery = useCallback(
+    async (
+      deliveryId: number,
+      payload: {
+        delivery_type?: "individual" | "collective";
+        beneficiary_count?: number;
+        items?: string[];
+      }
+    ) => {
+      try {
+        const res = await fetchWithRetry(`/api/deliveries/${deliveryId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Error" }));
+          toast.error(data.error || "No se pudo actualizar la entrega.");
+          return null;
+        }
+        const updated: Delivery = await res.json();
+        toast.success("Entrega actualizada correctamente.");
+        // Replace the old entry with the updated one in local state.
+        setDeliveries((prev) =>
+          prev.map((d) => (d.id === deliveryId ? updated : d))
+        );
+        return updated;
+      } catch (err) {
+        console.error("updateDelivery error:", err);
+        toast.error("Error de red al actualizar la entrega.");
+        return null;
+      }
+    },
+    []
+  );
+
   const deleteDelivery = useCallback(
     async (deliveryId: number): Promise<boolean> => {
       try {
@@ -117,5 +161,5 @@ export function useDeliveries(personId: number | null): UseDeliveriesResult {
     []
   );
 
-  return { deliveries, loading, error, refetch: load, createDelivery, deleteDelivery };
+  return { deliveries, loading, error, refetch: load, createDelivery, updateDelivery, deleteDelivery };
 }

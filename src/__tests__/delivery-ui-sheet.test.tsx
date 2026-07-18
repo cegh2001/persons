@@ -106,6 +106,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -121,6 +122,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -137,6 +139,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -153,6 +156,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -169,6 +173,7 @@ describe("PersonDetailSheet", () => {
         onClose={onClose}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -185,6 +190,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="visor"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -201,6 +207,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={onNewDelivery}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -219,6 +226,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -238,6 +246,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -257,6 +266,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );
@@ -273,6 +283,7 @@ describe("PersonDetailSheet", () => {
         onClose={() => {}}
         role="admin"
         onNewDelivery={() => {}}
+        onEditDelivery={() => {}}
         onNewAttention={() => {}}
       />
     );

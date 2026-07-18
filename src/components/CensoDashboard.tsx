@@ -16,7 +16,7 @@ import { QuickDeliveryDialog } from "@/components/QuickDeliveryDialog";
 import { QuickMedicalDialog } from "@/components/QuickMedicalDialog";
 import { ScanUpload } from "@/components/scan/ScanUpload";
 import { Login } from "@/components/Login";
-import type { Person } from "@/types/person";
+import type { Person, Delivery } from "@/types/person";
 
 function AuthLoading() {
   return (
@@ -41,6 +41,8 @@ export function CensoDashboard() {
   const [deliveryOpen, setDeliveryOpen] = React.useState(false);
   const [medicalOpen, setMedicalOpen] = React.useState(false);
   const [prefillPersonId, setPrefillPersonId] = React.useState<number | undefined>(undefined);
+  const [editDelivery, setEditDelivery] = React.useState<Delivery | null>(null);
+  const [sheetRefreshKey, setSheetRefreshKey] = React.useState(0);
 
   if (auth.authLoading) return <AuthLoading />;
   if (!auth.user) {
@@ -60,6 +62,13 @@ export function CensoDashboard() {
 
   const handleNewDeliveryFromSheet = (personId: number) => {
     setPrefillPersonId(personId);
+    setEditDelivery(null);
+    setDeliveryOpen(true);
+  };
+
+  const handleEditDeliveryFromSheet = (delivery: Delivery) => {
+    setPrefillPersonId(undefined);
+    setEditDelivery(delivery);
     setDeliveryOpen(true);
   };
 
@@ -72,6 +81,7 @@ export function CensoDashboard() {
     setDeliveryOpen(open);
     if (!open) {
       setPrefillPersonId(undefined);
+      setEditDelivery(null);
       // Refresh stats after a successful create (toast already in hook).
       data.fetchData();
     }
@@ -178,7 +188,9 @@ export function CensoDashboard() {
         onClose={handleCloseSheet}
         role={role}
         onNewDelivery={handleNewDeliveryFromSheet}
+        onEditDelivery={handleEditDeliveryFromSheet}
         onNewAttention={handleNewAttentionFromSheet}
+        refreshKey={sheetRefreshKey}
       />
 
       {isAdmin && (
@@ -187,8 +199,12 @@ export function CensoDashboard() {
             open={deliveryOpen}
             onOpenChange={handleDialogChange}
             prefillPersonId={prefillPersonId}
+            editDelivery={editDelivery}
             persons={data.persons}
-            onSuccess={() => data.fetchData()}
+            onSuccess={() => {
+              data.fetchData();
+              setSheetRefreshKey((k) => k + 1);
+            }}
           />
           <QuickMedicalDialog
             open={medicalOpen}

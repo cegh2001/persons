@@ -93,10 +93,16 @@ export const patchDeliverySchema = z
   .object({
     delivery_type: deliveryTypeSchema.optional(),
     beneficiary_count: beneficiaryCountSchema.optional(),
+    items: z
+      .array(supplyItemSchema)
+      .max(20, "Máximo 20 ítems por entrega")
+      .optional(),
   })
   .refine(
     (v) =>
-      v.delivery_type !== undefined || v.beneficiary_count !== undefined,
+      v.delivery_type !== undefined ||
+      v.beneficiary_count !== undefined ||
+      v.items !== undefined,
     { message: "Cuerpo vacío — no hay campos para actualizar." }
   );
 

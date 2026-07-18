@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Package, Users, Loader2, AlertTriangle } from "lucide-react";
+import { Package, Users, Loader2, AlertTriangle, Pencil } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/combobox";
 import { SUPPLY_ITEMS, type SupplyItem } from "@/lib/validation";
 import { useDeliveries } from "@/hooks/useDeliveries";
-import type { Person } from "@/types/person";
+import type { Person, Delivery } from "@/types/person";
 
 interface QuickDeliveryDialogProps {
   open: boolean;
@@ -32,6 +32,7 @@ interface QuickDeliveryDialogProps {
   onSuccess?: () => void;
   prefillPersonId?: number;
   persons: Person[];
+  editDelivery?: Delivery | null;
 }
 
 const SUPPLY_LABELS: Record<SupplyItem, string> = {
@@ -61,17 +62,23 @@ export function QuickDeliveryDialog({
   onSuccess,
   prefillPersonId,
   persons,
+  editDelivery,
 }: QuickDeliveryDialogProps) {
-  const { createDelivery } = useDeliveries(null);
+  const { createDelivery, updateDelivery } = useDeliveries(null);
+  const isEdit = editDelivery != null;
 
   const [personId, setPersonId] = useState<number | null>(
-    prefillPersonId ?? null
+    editDelivery?.person_id ?? prefillPersonId ?? null
   );
   const [selectedItems, setSelectedItems] = useState<Set<SupplyItem>>(
-    new Set()
+    new Set(editDelivery?.items?.map((i) => i.item as SupplyItem) ?? [])
   );
-  const [isCollective, setIsCollective] = useState(false);
-  const [beneficiaryCount, setBeneficiaryCount] = useState<number>(1);
+  const [isCollective, setIsCollective] = useState(
+    editDelivery?.delivery_type === "collective"
+  );
+  const [beneficiaryCount, setBeneficiaryCount] = useState<number>(
+    editDelivery?.beneficiary_count ?? 1
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,19 +87,21 @@ export function QuickDeliveryDialog({
   React.useEffect(() => {
     if (open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPersonId(prefillPersonId ?? null);
+      setPersonId(editDelivery?.person_id ?? prefillPersonId ?? null);
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedItems(new Set());
+      setSelectedItems(
+        new Set(editDelivery?.items?.map((i) => i.item as SupplyItem) ?? [])
+      );
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsCollective(false);
+      setIsCollective(editDelivery?.delivery_type === "collective");
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setBeneficiaryCount(1);
+      setBeneficiaryCount(editDelivery?.beneficiary_count ?? 1);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(null);
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSubmitting(false);
     }
-  }, [open, prefillPersonId]);
+  }, [open, prefillPersonId, editDelivery]);
 
   const personItems = useMemo(
     () =>
@@ -139,17 +148,31 @@ export function QuickDeliveryDialog({
     setError(null);
     setSubmitting(true);
     try {
-      const result = await createDelivery({
-        person_id: personId!,
-        delivery_type: isCollective ? "collective" : "individual",
-        beneficiary_count: isCollective ? beneficiaryCount : 1,
-        items: Array.from(selectedItems),
-      });
-      if (result) {
-        onSuccess?.();
-        onOpenChange(false);
+      if (isEdit) {
+        const result = await updateDelivery(editDelivery!.id, {
+          delivery_type: isCollective ? "collective" : "individual",
+          beneficiary_count: isCollective ? beneficiaryCount : 1,
+          items: Array.from(selectedItems),
+        });
+        if (result) {
+          onSuccess?.();
+          onOpenChange(false);
+        } else {
+          setError("No se pudo actualizar la entrega.");
+        }
       } else {
-        setError("No se pudo registrar la entrega.");
+        const result = await createDelivery({
+          person_id: personId!,
+          delivery_type: isCollective ? "collective" : "individual",
+          beneficiary_count: isCollective ? beneficiaryCount : 1,
+          items: Array.from(selectedItems),
+        });
+        if (result) {
+          onSuccess?.();
+          onOpenChange(false);
+        } else {
+          setError("No se pudo registrar la entrega.");
+        }
       }
     } finally {
       setSubmitting(false);
@@ -161,12 +184,17 @@ export function QuickDeliveryDialog({
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Package className="size-4 text-indigo-600 dark:text-indigo-400" />
-            Nueva entrega
+            {isEdit ? (
+              <Pencil className="size-4 text-indigo-600 dark:text-indigo-400" />
+            ) : (
+              <Package className="size-4 text-indigo-600 dark:text-indigo-400" />
+            )}
+            {isEdit ? "Editar entrega" : "Nueva entrega"}
           </DialogTitle>
           <DialogDescription>
-            Registrá una entrega individual o colectiva para una persona del
-            censo.
+            {isEdit
+              ? "Modificá los datos de la entrega registrada."
+              : "Registrá una entrega individual o colectiva para una persona del censo."}
           </DialogDescription>
         </DialogHeader>
 
@@ -174,7 +202,7 @@ export function QuickDeliveryDialog({
           {/* Person selector */}
           <div className="space-y-1.5">
             <Label htmlFor="qd-person">Persona</Label>
-            {prefillPersonId && selectedPerson ? (
+            {(prefillPersonId || isEdit) && selectedPerson ? (
               <Input
                 id="qd-person"
                 value={
@@ -335,8 +363,11 @@ export function QuickDeliveryDialog({
             <Button type="submit" disabled={submitting}>
               {submitting ? (
                 <>
-                  <Loader2 className="size-3.5 animate-spin" /> Registrando...
+                  <Loader2 className="size-3.5 animate-spin" />{" "}
+                  {isEdit ? "Guardando..." : "Registrando..."}
                 </>
+              ) : isEdit ? (
+                "Guardar cambios"
               ) : (
                 "Registrar entrega"
               )}
